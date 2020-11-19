@@ -15,7 +15,7 @@
 
 // User Libraries
 #include "RazorAHRS.h"
-#include "/root/ros_catkin_ws/devel/include/picopter/Imu.h"
+#include "/root/ros_catkin_ws/devel/include/picopter/Imu_msg.h"
 
 int main(int argc, char **argv)
 {
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 
     ros::NodeHandle n;
 
-    ros::Publisher chatter_pub = n.advertise<picopter::Imu>("imu_data", 1);
+    ros::Publisher chatter_pub = n.advertise<picopter::Imu_msg>("imu_data", 1);
 
     ros::Rate loop_rate(100);
 
@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 
     while (ros::ok)
     {
-        picopter::Imu msg;
+        picopter::Imu_msg msg;
         imu.process();
         msg.pitch = imu.pitch;
         msg.roll = imu.roll;

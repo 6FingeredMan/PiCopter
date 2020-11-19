@@ -88,5 +88,10 @@ void SuperTwistingSMC::process(void)
 
 }
 
+float SuperTwistingSMC::returnCmd(void)
+{
+    return cmd;
+}
+
 
 

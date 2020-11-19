@@ -1,0 +1,6 @@
+float32 target_elevation
+float32 target_course
+float32 target_speed
+bool idle
+string current_objective
+float32 objectives_remaining

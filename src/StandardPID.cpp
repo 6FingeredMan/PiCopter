@@ -27,18 +27,15 @@ StandardPID::StandardPID()
     state(0.0),
     state_rate(0.0),
     cmd(0.0),
-    dt(0.0)
+    dt(0.02)
 {
     reset();
 }
 
 void StandardPID::reset(void)
 {
-    Kp = Ki = Kd = 0.0;
     I = 0.0;
-    maxI = max = 0.0;
     target = state = state_rate = cmd = 0.0;
-    dt = 0.02;
 }
 
 void StandardPID::loadConfig(std::string & DOF)
@@ -95,5 +92,8 @@ void StandardPID::process(void)
 
 }
 
-
+float StandardPID::returnCmd(void)
+{
+    return cmd;
+}
 

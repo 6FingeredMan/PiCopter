@@ -56,9 +56,8 @@ class ControllerInterface
         virtual void setTarget(float val) = 0;
         virtual void setStates(float val1, float val2) = 0;
         virtual void process(void) = 0;
-        
-
-
+        virtual void reset(void) = 0;
+        virtual float returnCmd(void) = 0;
 };
 
 #endif

@@ -25,6 +25,7 @@ class StandardPID : public ControllerInterface
         void setTarget(float val);
         void setStates(float val1, float val2);
         void process(void);
+        float returnCmd(void);
 
     protected:
         float Kp, Ki, Kd;   // PID Gains

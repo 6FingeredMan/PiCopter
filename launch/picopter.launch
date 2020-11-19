@@ -1,0 +1,18 @@
+<launch>
+
+<!-- Create the Navigator node -->
+<node pkg="picopter" name="navigator" type="navigator" />
+
+<!-- Create the AHRS node -->
+<node pkg="picopter" name="ahrs" type="ahrs" />
+
+<!-- Create the Autopilot node -->
+<node pkg="picopter" name="autopilot" type="autopilot" />
+
+<!-- Create the Motor Drive node -->
+<node pkg="picopter" name="motor_driver" type="PCA9685.py" />
+
+<!-- Create the Altitude Sensor node -->
+<node pkg="picopter" name="altitude_sensor" type="VL53L1X.py" />
+
+</launch>

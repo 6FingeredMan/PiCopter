@@ -17,8 +17,9 @@
 
 // User Libraries
 #include "Controllers.h"
-#include "/root/ros_catkin_ws/devel/include/picopter/Imu.h"
-#include "/root/ros_catkin_ws/devel/include/picopter/Motors.h"
+#include "/root/ros_catkin_ws/devel/include/picopter/Imu_msg.h"
+#include "/root/ros_catkin_ws/devel/include/picopter/Motors_msg.h"
+#include "/root/ros_catkin_ws/devel/include/picopter/Navigator_msg.h"
 
 class Autopilot
 {
@@ -37,9 +38,13 @@ public:
 	void startAutopilot(void);
 
 	// Sets current attitude states for the controllers
-	void setAttitudeStates(const picopter::Imu::ConstPtr& msg);
+	void setAttitudeStates(const picopter::Imu_msg::ConstPtr& msg);
+
+	// Sets the navigation states for the controllers
+	void setNavStates(const picopter::Navigator_msg::ConstPtr& msg);
 
 	// Sets elevation state for the controller
+	void setElevationState(void);
 
 	// Sets target states for the controllers
 	void setTargets(void);
@@ -50,11 +55,24 @@ public:
 	// Handles controller mixing and priority of controls
 	// and computes motor commands
 	void mix(void);
+
+	// Public variable declarations
 	float M1_cmd;
 	float M2_cmd;
 	float M3_cmd;
 	float M4_cmd;
-	picopter::Motors motor_msg;
+	float elevation_target;
+	float pitch_target;
+	float roll_target;
+	float yaw_target;
+	float pitch_val;
+	float roll_val;
+	float pitch_cmd;
+	float roll_cmd;
+	float yaw_cmd;
+	float z_cmd;
+	bool idle_status;
+	picopter::Motors_msg motor_msg;
 
 
 
@@ -64,9 +82,10 @@ private:
 	ros::NodeHandle n;
 	ros::Publisher motor_pub;
 	ros::Subscriber ahrs_sub;
+	ros::Subscriber nav_sub;
 
 	// Controller Factory Hooks
-	enum {altitude, north, east, pitch, roll, yaw};
+	enum {altitude, speed, pitch, roll, yaw};
 
 	std::map< uint32_t, std::string > _controllerPrefix;
     std::map< uint32_t, std::string > _controllerConfigType;

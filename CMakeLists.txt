@@ -12,11 +12,13 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## Declare ROS messages and services
 add_message_files(
-  FILES 
-  Elevation.msg
-  Gps.msg
-  Imu.msg
-  Motors.msg
+  FILES
+  Altitude_msg.msg 
+  Elevation_msg.msg
+  Gps_msg.msg
+  Imu_msg.msg
+  Motors_msg.msg
+  Navigator_msg.msg
 )
 #add_service_files(FILES AddTwoInts.srv)
 
@@ -46,3 +48,15 @@ add_executable(autopilot
 target_link_libraries(autopilot ${catkin_LIBRARIES})
 add_dependencies(autopilot picopter_generate_messages_cpp)
 
+## Build the navigator node
+add_executable(navigator
+  src/navigator_node.cpp
+  src/navigator.cpp)
+target_link_libraries(navigator ${catkin_LIBRARIES})
+add_dependencies(navigator picopter_generate_messages_cpp)
+
+catkin_install_python(PROGRAMS 
+  scripts/PCA9685.py
+  scripts/VL53L1X.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
