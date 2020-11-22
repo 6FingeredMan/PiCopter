@@ -32,9 +32,13 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(100);
 
     // This is a hack to compute rates until I re-write the AHRS code to send rates over i2c
-    float pitch_last = 0.0;
-    float roll_last = 0.0;
-    float yaw_last = 0.0;
+    imu.process();
+    float pitch_last = imu.pitch;
+    float roll_last = imu.roll;
+    float yaw_last = imu.yaw;
+    float pitch_rate_last = 0.0;
+    float roll_rate_last = 0.0;
+    float yaw_rate_last = 0.0;
     bool check = false;
 
     while (ros::ok)
@@ -44,9 +48,18 @@ int main(int argc, char **argv)
         msg.pitch = imu.pitch;
         msg.roll = imu.roll;
         msg.yaw = imu.yaw;
-        msg.pitch_rate = 0.0;
-        msg.roll_rate = 0.0;
-        msg.yaw_rate = 0.0;
+        msg.pitch_rate = (imu.pitch - pitch_last) * 100.0;
+        msg.roll_rate = (imu.roll - roll_last) * 100.0;
+        msg.yaw_rate = (yaw_last - imu.yaw) * 100.0;
+        msg.pitch_rate_rate = (msg.pitch_rate - pitch_rate_last) * 100.0;
+        msg.roll_rate_rate = (msg.roll_rate - roll_rate_last) * 100.0;
+        msg.yaw_rate_rate = (msg.yaw_rate - yaw_rate_last) * 100.0;
+        pitch_last = imu.pitch;
+        roll_last = imu.roll;
+        yaw_last = imu.yaw;
+        pitch_rate_last = msg.pitch_rate;
+        roll_rate_last = msg.roll_rate;
+        yaw_rate_last = msg.yaw_rate;
 
         chatter_pub.publish(msg);
         ros::spinOnce();

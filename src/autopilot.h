@@ -85,7 +85,7 @@ private:
 	ros::Subscriber nav_sub;
 
 	// Controller Factory Hooks
-	enum {altitude, speed, pitch, roll, yaw};
+	enum {altitude, speed, pitch, roll, yaw, pitch_rate, roll_rate, yaw_rate};
 
 	std::map< uint32_t, std::string > _controllerPrefix;
     std::map< uint32_t, std::string > _controllerConfigType;

@@ -15,4 +15,8 @@
 <!-- Create the Altitude Sensor node -->
 <node pkg="picopter" name="altitude_sensor" type="VL53L1X.py" />
 
+<!-- Create the BerryGPS node -->
+<node pkg="picopter" name="gps_sensor" type="berryGPS.py" />
+
+
 </launch>

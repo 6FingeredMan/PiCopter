@@ -31,13 +31,15 @@ Navigator::Navigator()
     speed_target(0.0),
     altitude(0.0),
     min_altitude(0.0),
+    heading_rate_target(0.0),
     latitude(0.0),
     longitude(0.0),
     northings(0.0),
     eastings(0.0),
     idle_status(true),
     objective_number(1),
-    last_objective(1),
+    prev_objective_number(0),
+    end_objective_number(1),
     curObjHeader("Objective "),
     curObj("Idle"),
     reader("/root/ros_catkin_ws/src/picopter/config/mission.ini")
@@ -75,7 +77,7 @@ void Navigator::startNavigator(void)
         nav_msg.target_speed = speed_target;
         nav_msg.idle = idle_status;
         nav_msg.current_objective = curObj;
-        nav_msg.objectives_remaining = last_objective - objective_number;
+        nav_msg.objectives_remaining = end_objective_number - objective_number;
         nav_pub.publish(nav_msg);
         ros::spinOnce();
         loop_rate.sleep();
@@ -95,25 +97,26 @@ void Navigator::setAltitude(const picopter::Altitude_msg::ConstPtr& msg)
     altitude = msg->altitude;
 }
 
-void Navigator::setTargetStates(void)
-{
-    // TO DO
-}
-
 void Navigator::process(void)
 {
+    // Check to see if the quad should be entering the next objective.
+    // If it is, parse through the mission file set the curObj
+    // string so that we call the appropriate objective function.
+    if(objective_number > prev_objective_number && objective_number <= end_objective_number)
+    {
+        curObjHeader = "Objective " + std::to_string(objective_number);
+        curObj = reader.Get(curObjHeader, "type", "UNKNOWN");
+        prev_objective_number = objective_number;
+        setTargetStates();
+    }
+
     // Check to see if the quad is at the end of the mission
     // and force an idle state if it is
-    if(objective_number > last_objective)
+    if(objective_number > end_objective_number)
     {
         idle();
         return;
     }
-    
-    // Parse through the mission file and call the 
-    // appropriate objective function
-    curObjHeader = "Objective " + std::to_string(objective_number);
-    curObj = reader.Get(curObjHeader, "type", "UNKNOWN");
 
     // This super hacky - TO DO - use a map and stop
     // reading from the mission.ini every damn loop... it's slow.
@@ -152,6 +155,83 @@ void Navigator::process(void)
         land();
         return;
     }
+}
+
+void Navigator::setTargetStates(void)
+{
+    // Try to get an elevation target
+    try
+    {
+        elevation_target = reader.GetReal(curObjHeader, "Elevation (meters)", -1);
+    }
+    catch (int e)
+    {
+        elevation_target = 0.0;
+    }
+    // Try to get a minimum altitude
+    try
+    {
+        min_altitude = reader.GetReal(curObjHeader, "Minimum Altitude (meters)", -1);
+    }
+    catch (int e)
+    {
+        min_altitude = 0.0;
+    }
+    // Try to get a speed target
+    try
+    {
+        speed_target = reader.GetReal(curObjHeader, "Speed (m/s)", -1);
+    }
+    catch (int e)
+    {
+        speed_target = 0.0;
+    }
+    // Try to get a heading rate target
+    try
+    {
+        heading_rate_target = reader.GetReal(curObjHeader, "Rate (deg/s)", -1);
+    }
+    catch (int e)
+    {
+        heading_rate_target = 0.0;
+    }
+
+
+}
+
+void Navigator::idle(void)
+{
+   idle_status = true;
+}
+
+void Navigator::hover(void)
+{
+    // TO DO
+}
+
+void Navigator::hoverRotate(void)
+{
+    // TO DO
+}
+
+void Navigator::holdStation(void)
+{
+    // TO DO
+}
+
+void Navigator::holdStationRotate(void)
+{
+    // TO DO
+}
+
+void Navigator::navigate(void)
+{
+    // TO DO
+}
+
+void Navigator::land(void)
+{
+    // TO DO
 }
 
 void Navigator::createMissionTemplate(void)
@@ -202,8 +282,7 @@ void Navigator::createMissionTemplate(void)
         tempFile << "Type = Navigate\n";
         tempFile << "Latitude = \n";
         tempFile << "Longitude = \n";
-        tempFile << "Transit Elevation (meters) = 10\n";
-        tempFile << "Destination Elevation (meters) = 10\n";
+        tempFile << "Elevation (meters) = 10\n";
         tempFile << "Minimum Altitude (meters) = 1.0\n";
         tempFile << "Orientation = Any\n";
         tempFile << "Speed (m/s) = 1\n";
@@ -221,40 +300,4 @@ void Navigator::createMissionTemplate(void)
         tempFile.close();
     }
 }
-
-void Navigator::idle(void)
-{
-   idle_status = true;
-}
-
-void Navigator::hover(void)
-{
-    // TO DO
-}
-
-void Navigator::hoverRotate(void)
-{
-    // TO DO
-}
-
-void Navigator::holdStation(void)
-{
-    // TO DO
-}
-
-void Navigator::holdStationRotate(void)
-{
-    // TO DO
-}
-
-void Navigator::navigate(void)
-{
-    // TO DO
-}
-
-void Navigator::land(void)
-{
-    // TO DO
-}
-
 

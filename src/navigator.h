@@ -44,11 +44,11 @@ public:
     // Sets the current altitude in meters
     void setAltitude(const picopter::Altitude_msg::ConstPtr& msg);
 
-	// Sets current target states for the controllers
-	void setTargetStates(void);
-
-	// Processes the mission file
+	// Processes the mission 
 	void process(void);
+
+    // Sets current target states for the controllers
+	void setTargetStates(void);
 
     // Creates a basic mission file with all available behaviors
     void createMissionTemplate(void);
@@ -60,13 +60,15 @@ public:
     float speed_target;
     float altitude;
     float min_altitude;
+    float heading_rate_target;
     float latitude;
     float longitude;
     float northings;
     float eastings;
     bool idle_status;
     int objective_number;
-    int last_objective;
+    int prev_objective_number;
+    int end_objective_number;
     std::string curObjHeader;
     std::string curObj;
     picopter::Navigator_msg nav_msg;

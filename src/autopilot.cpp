@@ -51,6 +51,9 @@ Autopilot::Autopilot()
     _controllerPrefix[pitch] = "Pitch Control";
     _controllerPrefix[roll] = "Roll Control";
     _controllerPrefix[yaw] = "Yaw Control";
+    _controllerPrefix[pitch_rate] = "Pitch Rate Control";
+    _controllerPrefix[roll_rate] = "Roll Rate Control";
+    _controllerPrefix[yaw_rate] = "Yaw Rate Control";
 
     loadConfig();
     startAutopilot();

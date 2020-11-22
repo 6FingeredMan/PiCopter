@@ -58,5 +58,6 @@ add_dependencies(navigator picopter_generate_messages_cpp)
 catkin_install_python(PROGRAMS 
   scripts/PCA9685.py
   scripts/VL53L1X.py
+  scripts/berryGPS.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
