@@ -7,11 +7,14 @@
 */
 
 // Included Libraries
+#include <chrono>
+#include <ctime>
 #include <iostream>
 #include <fstream>
 #include <map>
 #include <math.h>
 #include <string>
+#include <time.h>
 
 // 3rd Party Libraries
 #include "INIReader.h"
@@ -26,6 +29,8 @@
 Navigator::Navigator()
 :
     RUN_OK(false),
+    duration_minutes(60.0),
+    duration_seconds(3600.0),
     course_target(0.0),
     elevation_target(0.0),
     speed_target(0.0),
@@ -39,7 +44,7 @@ Navigator::Navigator()
     idle_status(true),
     objective_number(1),
     prev_objective_number(0),
-    end_objective_number(1),
+    end_objective_number(0),
     curObjHeader("Objective "),
     curObj("Idle"),
     reader("/root/ros_catkin_ws/src/picopter/config/mission.ini")
@@ -57,7 +62,9 @@ void Navigator::missionCheck(void)
         createMissionTemplate(); // create a basic mission file
     }
 
-    // TO DO - verify all objectives are SAT
+    // Verify Mission
+    verifyMission();
+
 }
 
 void Navigator::startNavigator(void)
@@ -108,6 +115,8 @@ void Navigator::process(void)
         curObj = reader.Get(curObjHeader, "type", "UNKNOWN");
         prev_objective_number = objective_number;
         setTargetStates();
+        obj_start_time = getTime();
+        obj_end_time = obj_start_time + duration_seconds;
     }
 
     // Check to see if the quad is at the end of the mission
@@ -159,10 +168,21 @@ void Navigator::process(void)
 
 void Navigator::setTargetStates(void)
 {
+    // Try to get a duration
+    try
+    {
+        duration_minutes = reader.GetReal(curObjHeader, "Duration (minutes)", 60);
+        duration_seconds = duration_minutes * 60.0;
+    }
+    catch (int e)
+    {
+        duration_minutes = 60.0;
+        duration_seconds = duration_minutes * 60.0;
+    }
     // Try to get an elevation target
     try
     {
-        elevation_target = reader.GetReal(curObjHeader, "Elevation (meters)", -1);
+        elevation_target = reader.GetReal(curObjHeader, "Elevation (meters)", 0);
     }
     catch (int e)
     {
@@ -171,7 +191,7 @@ void Navigator::setTargetStates(void)
     // Try to get a minimum altitude
     try
     {
-        min_altitude = reader.GetReal(curObjHeader, "Minimum Altitude (meters)", -1);
+        min_altitude = reader.GetReal(curObjHeader, "Minimum Altitude (meters)", 0);
     }
     catch (int e)
     {
@@ -180,7 +200,7 @@ void Navigator::setTargetStates(void)
     // Try to get a speed target
     try
     {
-        speed_target = reader.GetReal(curObjHeader, "Speed (m/s)", -1);
+        speed_target = reader.GetReal(curObjHeader, "Speed (m/s)", 0);
     }
     catch (int e)
     {
@@ -189,7 +209,7 @@ void Navigator::setTargetStates(void)
     // Try to get a heading rate target
     try
     {
-        heading_rate_target = reader.GetReal(curObjHeader, "Rate (deg/s)", -1);
+        heading_rate_target = reader.GetReal(curObjHeader, "Rate (deg/s)", 0);
     }
     catch (int e)
     {
@@ -202,11 +222,28 @@ void Navigator::setTargetStates(void)
 void Navigator::idle(void)
 {
    idle_status = true;
+
+   // Check to see if the elapsed time since the objective start has
+   // reached the time limit set in the mission file. If it has, bump
+   // up the current objective number to start the next objective
+   if (getTime() >= obj_end_time)
+   {
+       objective_number += 1;
+   }
+   
 }
 
 void Navigator::hover(void)
 {
-    // TO DO
+    idle_status = false;
+
+    // Check to see if the elapsed time since the objective start has
+   // reached the time limit set in the mission file. If it has, bump
+   // up the current objective number to start the next objective
+   if (getTime() >= obj_end_time)
+   {
+       objective_number += 1;
+   }
 }
 
 void Navigator::hoverRotate(void)
@@ -231,7 +268,9 @@ void Navigator::navigate(void)
 
 void Navigator::land(void)
 {
-    // TO DO
+    idle_status = false;
+
+    // TO DO - create a flag for the autopilot to gracefully land
 }
 
 void Navigator::createMissionTemplate(void)
@@ -301,3 +340,24 @@ void Navigator::createMissionTemplate(void)
     }
 }
 
+void Navigator::verifyMission(void)
+{
+
+    // First determine how many objectives there are
+    std::set<std::string> sections = reader.Sections();
+    for (std::set<std::string>::iterator it = sections.begin(); it != sections.end(); ++it)
+    {
+        end_objective_number +=1;
+    }
+
+    // TO DO - make sure mission file isn't f'd up
+
+}
+
+double Navigator::getTime(void)
+{
+    struct timeval t;
+	gettimeofday(&t, NULL);
+	double time = (t.tv_sec + (t.tv_usec / 1000000.0)); // returns the time of day in seconds
+	return time;
+}

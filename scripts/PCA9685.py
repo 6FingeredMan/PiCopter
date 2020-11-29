@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import rospy
+from signal import signal, SIGINT
+from sys import exit
 from picopter.msg import Motors_msg
 
 class PCA9685:
@@ -54,10 +56,22 @@ class PCA9685:
 
 
     def start(self):
+        # Tell python to handle a control-c gracefully and set motor commands to zero
+        signal(SIGINT, self.graceful_exit)
+        # set the pwm frequency to 400 Hz
         self.set_frequency(int(400))
+
+        # set all motor commands to 0 throttle
         for i in range(16):
             self.set_pwm(int(i), int(1000))
+    
+        # start the subscriber
         self.sub = rospy.Subscriber("motor_cmds", Motors_msg, self.ros_callback)
+
+    def graceful_exit(self, signal_received, frame):
+        for i in range(16):
+            self.set_pwm(int(i), int(1000))
+            exit(0)
 
     def set_frequency(self, frequency):
         """
@@ -154,5 +168,6 @@ if __name__ == '__main__':
     i2c_address = 0x40
     i2c_port_num = 1
     motordriver = PCA9685(i2c_address, i2c_port_num)
+    # Star the python node
     rospy.init_node('motor_driver', anonymous=True)
     rospy.spin()

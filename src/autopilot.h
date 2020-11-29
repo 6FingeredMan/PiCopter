@@ -67,6 +67,7 @@ public:
 	float yaw_target;
 	float pitch_val;
 	float roll_val;
+	float yaw_val;
 	float pitch_cmd;
 	float roll_cmd;
 	float yaw_cmd;

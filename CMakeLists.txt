@@ -59,5 +59,6 @@ catkin_install_python(PROGRAMS
   scripts/PCA9685.py
   scripts/VL53L1X.py
   scripts/berryGPS.py
+  scripts/bmp388.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

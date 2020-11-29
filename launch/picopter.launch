@@ -18,5 +18,8 @@
 <!-- Create the BerryGPS node -->
 <node pkg="picopter" name="gps_sensor" type="berryGPS.py" />
 
+<!-- Create the elevation sensor node -->
+<node pkg="picopter" name="elevation_sensor" type="bmp388.py" />
+
 
 </launch>

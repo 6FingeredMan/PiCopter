@@ -40,6 +40,7 @@ Autopilot::Autopilot()
     yaw_target(0.0),
     pitch_val(0.0),
     roll_val(0.0),
+    yaw_val(0.0),
     pitch_cmd(0.0),
     roll_cmd(0.0),
     yaw_cmd(0.0),
@@ -131,6 +132,7 @@ void Autopilot::setAttitudeStates(const picopter::Imu_msg::ConstPtr& msg)
     _controllers[yaw]->setStates(msg->yaw, msg->yaw_rate);
     pitch_val = msg->pitch;
     roll_val = msg->roll;
+    yaw_val = msg->yaw;
 }
 
 void Autopilot::setNavStates(const picopter::Navigator_msg::ConstPtr& msg)
@@ -148,10 +150,10 @@ void Autopilot::setElevationState(void)
 void Autopilot::setTargets(void)
 {
     // TEMPORARY
-    _controllers[altitude]->setTarget(0.0);
+    _controllers[altitude]->setTarget(elevation_target);
     _controllers[pitch]->setTarget(0.0);
     _controllers[roll]->setTarget(0.0);
-    _controllers[yaw]->setTarget(0.0);
+    _controllers[yaw]->setTarget(yaw_val); // hack to prevent yaw controller from working
 }
 
 void Autopilot::processLoops(void)

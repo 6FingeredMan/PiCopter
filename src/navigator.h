@@ -9,7 +9,10 @@
 #define __NAVIGATOR_H__
 
 // Included Libraries
+#include <chrono>
+#include <ctime>
 #include <cstdint>
+#include <time.h>
 #include <map>
 
 // 3rd Party Libraries
@@ -53,8 +56,16 @@ public:
     // Creates a basic mission file with all available behaviors
     void createMissionTemplate(void);
 
+    // Verifies that the mission file is good for run
+    void verifyMission(void);
+
+    // Gets the system time and returns a time in seconds
+    double getTime(void);
+
 	// Public variable declarations
     bool RUN_OK = false;
+    float duration_minutes;
+    float duration_seconds;
     float course_target;
     float elevation_target;
     float speed_target;
@@ -69,6 +80,8 @@ public:
     int objective_number;
     int prev_objective_number;
     int end_objective_number;
+    double obj_start_time;
+    double obj_end_time;
     std::string curObjHeader;
     std::string curObj;
     picopter::Navigator_msg nav_msg;
