@@ -42,11 +42,11 @@ void StandardPID::loadConfig(std::string & DOF)
 {
     INIReader reader("/root/ros_catkin_ws/src/picopter/config/ini_test.ini");
 
-    Kp = reader.GetReal(DOF, "Kp", -1);
-    Ki = reader.GetReal(DOF, "Ki", -1);
-    Kd = reader.GetReal(DOF, "Kd", -1);
-    maxI = reader.GetReal(DOF, "maxI", -1);
-    max = reader.GetReal(DOF, "max", -1);
+    Kp = reader.GetReal(DOF, "Kp", 3.0);
+    Ki = reader.GetReal(DOF, "Ki", 0.0);
+    Kd = reader.GetReal(DOF, "Kd", 0.0);
+    maxI = reader.GetReal(DOF, "maxI", 10.0);
+    max = reader.GetReal(DOF, "max", 25.0);
 
     // DEBUG ONLY
     std::cout << "Created a " << DOF << " PID Controller." << std::endl;
@@ -85,9 +85,9 @@ void StandardPID::process(void)
     // Compute the command and clamp it
     cmd = Kp*error + Kd*state_rate + I;
 
-    if(cmd > 100.0)
+    if(cmd > max)
     {
-        cmd = 100.0;
+        cmd = max;
     }
 
 }

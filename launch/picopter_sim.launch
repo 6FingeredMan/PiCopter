@@ -1,0 +1,18 @@
+<launch>
+
+<!-- Create the Navigator node -->
+<node pkg="picopter" name="navigator" type="navigator" />
+
+<!-- Create the Autopilot node -->
+<node pkg="picopter" name="autopilot" type="autopilot" />
+
+<!-- Create the Simulator node -->
+<node pkg="picopter" name="simulator" type="simulator" />
+
+<!-- Create the Simulated AHRS node -->
+<node pkg="picopter" name="ahrs_sim" type="ahrs_sim" />
+
+<!-- Create the Simulated elevation node -->
+<node pkg="picopter" name="elevation_sensor_sim" type="bmp388_sim.py" />
+
+</launch>

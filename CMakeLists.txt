@@ -19,6 +19,7 @@ add_message_files(
   Imu_msg.msg
   Motors_msg.msg
   Navigator_msg.msg
+  Sim_msg.msg
 )
 #add_service_files(FILES AddTwoInts.srv)
 
@@ -55,10 +56,25 @@ add_executable(navigator
 target_link_libraries(navigator ${catkin_LIBRARIES})
 add_dependencies(navigator picopter_generate_messages_cpp)
 
+## Build the simulator node
+add_executable(simulator
+  src/simulator_node.cpp
+  src/simulator.cpp)
+target_link_libraries(simulator ${catkin_LIBRARIES})
+add_dependencies(simulator picopter_generate_messages_cpp)
+
+## Build the simulated AHRS node
+add_executable(ahrs_sim
+  src/ahrs_sim_node.cpp
+  src/ahrs_sim.cpp)
+target_link_libraries(ahrs_sim ${catkin_LIBRARIES})
+add_dependencies(ahrs_sim picopter_generate_messages_cpp)
+
 catkin_install_python(PROGRAMS 
   scripts/PCA9685.py
   scripts/VL53L1X.py
   scripts/berryGPS.py
   scripts/bmp388.py
+  scripts/bmp388_sim.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

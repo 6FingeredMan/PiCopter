@@ -17,13 +17,13 @@
 #include <ros/ros.h>
 
 // User Libraries
-#include "Controllers.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Altitude_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Elevation_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Gps_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Imu_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Motors_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Navigator_msg.h"
+#include "/root/ros_catkin_ws/devel/include/picopter/Sim_msg.h"
 
 class Simulator
 {
@@ -37,9 +37,9 @@ class Simulator
         // Starts the simulator
         void startSimulator(void);
 
-        void rungeKutta(void);
-
         void process(void);
+
+        //float * rungeKutta(float input_array[12]);
 
         void calcAccels(void);
 
@@ -49,19 +49,11 @@ class Simulator
 
         void setMotorCmd(const picopter::Motors_msg::ConstPtr& msg);
 
-        void computeRPM(void);
+        // void computeRPM(void);
 
         void propThrust(void);
 
         void propTorque(void);
-
-        void gpsSim(void);
-
-        void ahrsSim(void);
-
-        void altitudeSim(void);
-
-        void elevationSim(void);
 
         // Motor Commands, %
         float M1_cmd;
@@ -129,28 +121,25 @@ class Simulator
         float lat;              // Latitude, degree decimal
         float lon;              // Longitude, degree decimal
         // Runge-Kutta Solver Variables and Arrays
-        float dt;               // Frequency of solver
-        //float k1[6];            // Array of 6 accelerations
-        //float k2[6];            // ""
-        //float k3[6];            // ""
-        //float k4[6];            // ""
+        double sim_freq;         // Frequency of solver
+        float dt;               // Time step of solver
+        float k1[12];            // Array of 6 velocities and 6 positions
+        float k2[12];            // ""
+        float k3[12];            // ""
+        float k4[12];            // ""
+        // Simulation time
+        float sim_time;
 
         // Simulation ini Reader
         INIReader reader;
 
         // ROS topic messages
-        picopter::Altitude_msg alt_data_msg;
-        picopter::Imu_msg imu_data_msg;
-        picopter::Gps_msg gps_data_msg;
-        picopter::Elevation_msg elev_data_msg;
+        picopter::Sim_msg sim_data_msg;
 
     private:
         // ROS hooks
         ros::NodeHandle n;
-        ros::Publisher elevation_pub;
-        ros::Publisher ahrs_pub;
-        ros::Publisher altitude_pub;
-        ros::Publisher gps_pub;
+        ros::Publisher sim_pub;
         ros::Subscriber motors_sub;
 
 

@@ -1,5 +1,5 @@
 /*
-* @file      Autopilot.h
+* @file      Autopilot.cpp
 * @date      11/4/2020
 * @copyright Brendan Martin
 * @version   1.0.0
@@ -153,12 +153,13 @@ void Autopilot::setTargets(void)
     _controllers[altitude]->setTarget(elevation_target);
     _controllers[pitch]->setTarget(0.0);
     _controllers[roll]->setTarget(0.0);
-    _controllers[yaw]->setTarget(yaw_val); // hack to prevent yaw controller from working
+    _controllers[yaw]->setTarget(0.0); 
 }
 
 void Autopilot::processLoops(void)
 {
-    //std::cout<< "Looping!" <<std::endl;
+    // Update the controller targets
+    setTargets();
 
     // Process the positional controllers first
     _controllers[altitude]->process();
@@ -187,7 +188,7 @@ void Autopilot::mix(void)
 
     // Step 1 - compensate for pitch and roll to correct the altitude command...
     // in theory this lets the altitude controller integrator compensate for battery drain
-    z_cmd = z_cmd / ( cos(abs(pitch_val) * PI / 180.0) * cos(abs(roll_val) * PI / 180.0) );
+    z_cmd = z_cmd / ( std::cos(pitch_val * PI / 180.0) * std::cos(roll_val * PI / 180.0) );
 
     if(z_cmd > 100.0)
     {
@@ -220,4 +221,36 @@ void Autopilot::mix(void)
     M2_cmd += yaw_cmd;          // CCW Prop, (+) yaw torque
     M3_cmd -= yaw_cmd;          // CW Prop, (-) yaw torque
     M4_cmd += yaw_cmd;          // CCW Prop, (+) yaw torque
+
+    // Step 5 -- check for bad data ouput like NaN and set all motors to 0 if 
+    //           bad data is found
+    if (isnan(M1_cmd))
+    {
+        M1_cmd = 0.0;
+        M2_cmd = 0.0;
+        M3_cmd = 0.0;
+        M4_cmd = 0.0;
+    }
+    if (isnan(M2_cmd))
+    {
+        M1_cmd = 0.0;
+        M2_cmd = 0.0;
+        M3_cmd = 0.0;
+        M4_cmd = 0.0;
+    }
+    if (isnan(M3_cmd))
+    {
+        M1_cmd = 0.0;
+        M2_cmd = 0.0;
+        M3_cmd = 0.0;
+        M4_cmd = 0.0;
+    }
+    if (isnan(M4_cmd))
+    {
+        M1_cmd = 0.0;
+        M2_cmd = 0.0;
+        M3_cmd = 0.0;
+        M4_cmd = 0.0;
+    }
+
 }
