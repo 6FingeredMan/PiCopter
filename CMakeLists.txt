@@ -13,7 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## Declare ROS messages and services
 add_message_files(
   FILES
-  Altitude_msg.msg 
+  Altitude_msg.msg
+  Autopilot_msg.msg 
   Elevation_msg.msg
   Gps_msg.msg
   Imu_msg.msg

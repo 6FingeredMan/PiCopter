@@ -17,6 +17,8 @@
 
 // User Libraries
 #include "Controllers.h"
+#include "/root/ros_catkin_ws/devel/include/picopter/Autopilot_msg.h"
+#include "/root/ros_catkin_ws/devel/include/picopter/Elevation_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Imu_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Motors_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Navigator_msg.h"
@@ -44,7 +46,7 @@ public:
 	void setNavStates(const picopter::Navigator_msg::ConstPtr& msg);
 
 	// Sets elevation state for the controller
-	void setElevationState(void);
+	void setElevationState(const picopter::Elevation_msg::ConstPtr& msg);
 
 	// Sets target states for the controllers
 	void setTargets(void);
@@ -73,7 +75,13 @@ public:
 	float yaw_cmd;
 	float z_cmd;
 	bool idle_status;
+	float elevation;
+	float elevation_last;
+	float elevation_rate;
+	float elevation_rate_last;
+	float elevation_accel;
 	picopter::Motors_msg motor_msg;
+	picopter::Autopilot_msg pilot_msg;
 
 
 
@@ -82,11 +90,13 @@ private:
 	// ROS hooks
 	ros::NodeHandle n;
 	ros::Publisher motor_pub;
+	ros::Publisher pilot_pub;
 	ros::Subscriber ahrs_sub;
 	ros::Subscriber nav_sub;
+	ros::Subscriber elevation_sub;
 
 	// Controller Factory Hooks
-	enum {altitude, speed, pitch, roll, yaw, pitch_rate, roll_rate, yaw_rate};
+	enum {altitude_rate, altitude, speed, pitch, roll, yaw, pitch_rate, roll_rate, yaw_rate};
 
 	std::map< uint32_t, std::string > _controllerPrefix;
     std::map< uint32_t, std::string > _controllerConfigType;

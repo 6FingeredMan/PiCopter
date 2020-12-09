@@ -90,6 +90,11 @@ void StandardPID::process(void)
         cmd = max;
     }
 
+    if(cmd < 0.0)
+    {
+        cmd = 0.0;
+    }
+
 }
 
 float StandardPID::returnCmd(void)

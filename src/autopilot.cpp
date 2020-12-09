@@ -18,6 +18,8 @@
 
 // User Libraries
 #include "autopilot.h"
+#include "/root/ros_catkin_ws/devel/include/picopter/Autopilot_msg.h"
+#include "/root/ros_catkin_ws/devel/include/picopter/Elevation_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Imu_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Motors_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Navigator_msg.h"
@@ -45,9 +47,15 @@ Autopilot::Autopilot()
     roll_cmd(0.0),
     yaw_cmd(0.0),
     z_cmd(0.0),
-    idle_status(true)
+    idle_status(true),
+    elevation(0.0),
+    elevation_last(0.0),
+    elevation_rate(0.0),
+    elevation_rate_last(0.0),
+    elevation_accel(0.0)
 {
     _controllerPrefix[altitude] = "Altitude Control";
+    _controllerPrefix[altitude_rate] = "Altitude Rate Control";
     _controllerPrefix[speed] = "Speed Control";
     _controllerPrefix[pitch] = "Pitch Control";
     _controllerPrefix[roll] = "Roll Control";
@@ -92,8 +100,12 @@ void Autopilot::startAutopilot(void)
     // Updates the idle status and zeroizes motor commands and integrators if true
     nav_sub = n.subscribe<picopter::Navigator_msg>("nav_data", 1, &Autopilot::setNavStates, this);
 
+    // Updates the elevation status
+    elevation_sub = n.subscribe<picopter::Elevation_msg>("elevation_data", 1, &Autopilot::setElevationState, this);
+
     // Runs the main process
     motor_pub = n.advertise<picopter::Motors_msg>("motor_cmds", 1);
+    pilot_pub = n.advertise<picopter::Autopilot_msg>("autopilot_data", 1);
     ros::Rate loop_rate(50);
     while (ros::ok)
     {
@@ -119,6 +131,7 @@ void Autopilot::startAutopilot(void)
             motor_msg.M4 = 0.0;
         }
         motor_pub.publish(motor_msg);
+        pilot_pub.publish(pilot_msg);
         ros::spinOnce();
         loop_rate.sleep();
     }
@@ -142,9 +155,15 @@ void Autopilot::setNavStates(const picopter::Navigator_msg::ConstPtr& msg)
     idle_status = msg->idle;
 }
 
-void Autopilot::setElevationState(void)
+void Autopilot::setElevationState(const picopter::Elevation_msg::ConstPtr& msg)
 {
-    _controllers[altitude]->setStates(0.0, 0.0);
+    elevation = msg->elevation;
+    elevation_rate = (elevation - elevation_last)*10.0; // TO DO - Add elevation rate to the elevation topic for direct computation in that publisher
+    elevation_accel = (elevation_rate - elevation_rate_last)*10.0; // TO DO - Add elevation accel to the elevation topic for direct computation in that publisher
+    _controllers[altitude]->setStates(elevation, elevation_last);
+    _controllers[altitude_rate]->setStates(elevation_rate, elevation_accel);
+    elevation_last = elevation;
+    elevation_rate_last = elevation_rate;
 }
 
 void Autopilot::setTargets(void)
@@ -163,6 +182,8 @@ void Autopilot::processLoops(void)
 
     // Process the positional controllers first
     _controllers[altitude]->process();
+    _controllers[altitude_rate]->setTarget(_controllers[altitude]->returnCmd());
+    _controllers[altitude_rate]->process();
     _controllers[speed]->process();
 
     // Pass the output of the north and east controllers as input to the attitude controllers
@@ -174,9 +195,11 @@ void Autopilot::processLoops(void)
     _controllers[yaw]->process();
 
     pitch_cmd = _controllers[pitch]->returnCmd();
+    pitch_cmd = 0.0;
     roll_cmd = _controllers[roll]->returnCmd();
+    roll_cmd = 0.0;
     yaw_cmd = _controllers[yaw]->returnCmd();
-    z_cmd = _controllers[altitude]->returnCmd();
+    z_cmd = _controllers[altitude_rate]->returnCmd();
 
     mix();
 }
@@ -252,5 +275,11 @@ void Autopilot::mix(void)
         M3_cmd = 0.0;
         M4_cmd = 0.0;
     }
+
+    // Publish the autopilot messages at the end of the chain
+    pilot_msg.z_cmd = z_cmd;
+    pilot_msg.pitch_cmd = pitch_cmd;
+    pilot_msg.roll_cmd = roll_cmd;
+    pilot_msg.yaw_cmd = yaw_cmd;
 
 }

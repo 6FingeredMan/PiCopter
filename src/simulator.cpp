@@ -196,6 +196,12 @@ void Simulator::calcAccels(void)
     if (isnan(u)) u = 0.0;
     if (isnan(v)) v = 0.0;
     if (isnan(w)) w = 0.0;
+    if (isnan(X)) X = 0.0;
+    if (isnan(Y)) Y = 0.0;
+    if (isnan(Z)) Z = 0.0;
+    if (isnan(K)) K = 0.0;
+    if (isnan(M)) M = 0.0;
+    if (isnan(N)) N = 0.0;
 
     u_dot = -g*std::sin(theta) + r*v - q*w;
     v_dot = g*std::sin(phi)*std::cos(theta) - r*u + p*w;
