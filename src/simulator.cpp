@@ -224,13 +224,27 @@ void Simulator::calcVelocities(void)
     if (isnan(w_dot)) w_dot = 0.0;
 
     // Using direct integration right now
-    // First, body translational velocities and rotational velocities
-    u += u_dot*dt;
-    v += v_dot*dt;
-    w += w_dot*dt;
-    p += p_dot*dt;
-    q += q_dot*dt;
-    r += r_dot*dt;
+    // First, body translational velocities and rotational velocities 
+    // only if the elevation is > 0
+    if(elevation >= 0)
+    {
+        u += u_dot*dt;
+        v += v_dot*dt;
+        w += w_dot*dt;
+        p += p_dot*dt;
+        q += q_dot*dt;
+        r += r_dot*dt;
+    }
+    else
+    {
+        // if elevation is < 0, then force the velocities to equal 0
+        u = 0.0;
+        v = 0.0;
+        w = 0.0;
+        p = 0.0;
+        q = 0.0;
+        r = 0.0;
+    }
 
     // Second, Earth relative rotational velocities and translational velocities
     phi_dot = p + (q*std::sin(phi) + r*std::cos(phi))*std::tan(theta);

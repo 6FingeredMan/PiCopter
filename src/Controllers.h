@@ -54,10 +54,14 @@ class ControllerInterface
         virtual ~ControllerInterface() {}
         virtual void loadConfig(std::string & DOF) = 0;
         virtual void setTarget(float val) = 0;
-        virtual void setStates(float val1, float val2) = 0;
+        // Controllers get State, Rate, and Accel
+        virtual void setStates(float val1, float val2, float val3) = 0;
         virtual void process(void) = 0;
         virtual void reset(void) = 0;
         virtual float returnCmd(void) = 0;
+        virtual float returnTargetPosition(void) = 0;
+        virtual float returnTargetRate(void) = 0;
+        
 };
 
 #endif

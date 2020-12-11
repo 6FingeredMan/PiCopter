@@ -84,7 +84,15 @@ void Navigator::startNavigator(void)
         nav_msg.target_speed = speed_target;
         nav_msg.idle = idle_status;
         nav_msg.current_objective = curObj;
-        nav_msg.objectives_remaining = end_objective_number - objective_number;
+        if(end_objective_number - objective_number >= 0)
+        {
+            nav_msg.objectives_remaining = end_objective_number - objective_number;
+        }
+        else
+        {
+            nav_msg.objectives_remaining = 0;
+        }
+        
         nav_pub.publish(nav_msg);
         ros::spinOnce();
         loop_rate.sleep();

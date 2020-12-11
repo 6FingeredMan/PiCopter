@@ -49,7 +49,7 @@ void SuperTwistingSMC::setTarget(float val)
     target = val;
 }
 
-void SuperTwistingSMC::setStates(float val1, float val2)
+void SuperTwistingSMC::setStates(float val1, float val2, float val3)
 {
     state = val1;
     state_rate = val2;
@@ -89,6 +89,16 @@ void SuperTwistingSMC::process(void)
 }
 
 float SuperTwistingSMC::returnCmd(void)
+{
+    return cmd;
+}
+
+float SuperTwistingSMC::returnTargetPosition(void)
+{
+    return cmd;
+}
+
+float SuperTwistingSMC::returnTargetRate(void)
 {
     return cmd;
 }

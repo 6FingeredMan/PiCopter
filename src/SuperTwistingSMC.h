@@ -23,9 +23,11 @@ class SuperTwistingSMC : public ControllerInterface
         void reset(void);
         void loadConfig(std::string & DOF);
         void setTarget(float val);
-        void setStates(float val1, float val2);
+        void setStates(float val1, float val2, float val3);
         void process(void);
         float returnCmd(void);
+        float returnTargetPosition(void);
+        float returnTargetRate(void);
 
     protected:
         float c, lambda, W; // Super Twisting Gains

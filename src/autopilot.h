@@ -58,6 +58,9 @@ public:
 	// and computes motor commands
 	void mix(void);
 
+	// Collects Autopilot data to publish
+	void collectAutopilotData(void);
+
 	// Public variable declarations
 	float M1_cmd;
 	float M2_cmd;
@@ -96,7 +99,7 @@ private:
 	ros::Subscriber elevation_sub;
 
 	// Controller Factory Hooks
-	enum {altitude_rate, altitude, speed, pitch, roll, yaw, pitch_rate, roll_rate, yaw_rate};
+	enum {altitude, speed, pitch, roll, yaw};
 
 	std::map< uint32_t, std::string > _controllerPrefix;
     std::map< uint32_t, std::string > _controllerConfigType;
