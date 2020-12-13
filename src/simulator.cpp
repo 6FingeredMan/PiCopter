@@ -14,6 +14,7 @@
 // 3rd Party Libraries
 #include "INIReader.h"
 #include <ros/ros.h>
+#include <eigen3/Eigen/Dense>
 
 // User Libraries
 #include "/root/ros_catkin_ws/devel/include/picopter/Imu_msg.h"
@@ -21,6 +22,8 @@
 #include "/root/ros_catkin_ws/devel/include/picopter/Navigator_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Sim_msg.h"
 #include "simulator.h"
+
+using namespace Eigen;
 
 Simulator::Simulator():
     M1_cmd(0.0),
@@ -72,6 +75,7 @@ Simulator::Simulator():
     sim_freq(200.0),
     dt(0.005),
     sim_time(0.0),
+    pi(3.1415926535),
     reader("/root/ros_catkin_ws/src/picopter/config/simulation.ini")
 {
     loadConfig();
@@ -80,21 +84,42 @@ Simulator::Simulator():
 
 void Simulator::loadConfig(void)
 {
+    // Set Eigen VectorXf vectors size to 12 with values equal to 0
+    return_array.setZero(12);
+    state_array.setZero(12);
+    temp_array.setZero(12);
+    K1.setZero(12);
+    K2.setZero(12);
+    K3.setZero(12);
+    K4.setZero(12); 
+
     // Get Robot Parameters
     mass = float(reader.GetReal("Robot", "mass", 0.4377));
     Ixx = float(reader.GetReal("Robot", "Ixx", 0.0047));
     Iyy = float(reader.GetReal("Robot", "Iyy", 0.0047));
     Izz = float(reader.GetReal("Robot", "Izz", 0.9998));
     LA = float(reader.GetReal("Robot", "Lever Arm", .125));
-    Km = float(reader.GetReal("Robot", "Km", -1));
-    Tm = float(reader.GetReal("Robot", "Tm", -1));
-    Voltage = float(reader.GetReal("Robot", "Voltage", -1));
+    Km = float(reader.GetReal("Robot", "Km", 0.0));
+    Tm = float(reader.GetReal("Robot", "Tm", 0.0));
+    Voltage = float(reader.GetReal("Robot", "Voltage", 0.0));
+
+    // Get Inital Conditions
+    state_array(0)  = float(reader.GetReal("Initial Conditions", "u", 0.0));
+    state_array(1)  = float(reader.GetReal("Initial Conditions", "v", 0.0));
+    state_array(2)  = float(reader.GetReal("Initial Conditions", "w", 0.0));
+    state_array(3)  = float(reader.GetReal("Initial Conditions", "p", 0.0));
+    state_array(4)  = float(reader.GetReal("Initial Conditions", "q", 0.0));
+    state_array(5)  = float(reader.GetReal("Initial Conditions", "r", 0.0));
+    state_array(6)  = float(reader.GetReal("Initial Conditions", "northings", 0.0));
+    state_array(7)  = float(reader.GetReal("Initial Conditions", "eastings", 0.0));
+    state_array(8)  = float(reader.GetReal("Initial Conditions", "altitude", 0.0));
+    state_array(9)  = float(reader.GetReal("Initial Conditions", "phi", 0.0));
+    state_array(10) = float(reader.GetReal("Initial Conditions", "theta", 0.0));
+    state_array(11) = float(reader.GetReal("Initial Conditions", "psi", 0.0));
 
     // Get Environment Parameters
     g = float(reader.GetReal("Environment", "gravity", 9.81));
     rho = float(reader.GetReal("Environment", "rho", 1.225));
-    lat = float(reader.GetReal("Enviornment", "latitude", -1));
-    lon = float(reader.GetReal("Environment", "longitude", -1));
 
     // Get Simulation Parameters
     sim_freq = double(reader.GetReal("Simulator", "simulation frequency (hz)", 200));
@@ -157,12 +182,120 @@ void Simulator::startSimulator(void)
 
 void Simulator::process(void)
 {
-    // Check for NaN and reset to values to 0.0
-    if (isnan(theta)) theta = 0.0;
-    if (isnan(phi)) phi = 0.0;
-    if (isnan(psi)) psi = 0.0;
+    // Call the Runge-Kutta Method
+    rungeKutta();
 
-    // Calculate the body relative forces - mechanics
+    // Unpack the Runge-Kutta State Array for correct publishing
+    u         = state_array(0);
+    v         = state_array(1);
+    w         = state_array(2);
+    p         = state_array(3);
+    q         = state_array(4);
+    r         = state_array(5);
+    northings = state_array(6);
+    eastings  = state_array(7);
+    elevation = state_array(8);
+    phi       = state_array(9);
+    theta     = state_array(10);
+    psi       = state_array(11);
+
+
+    ///////////////////////////////////////////////
+    // OLD METHOD BELOW - BAD
+    //////////////////////////////////////////////
+
+    // // Check for NaN and reset to values to 0.0
+    // if (isnan(theta)) theta = 0.0;
+    // if (isnan(phi)) phi = 0.0;
+    // if (isnan(psi)) psi = 0.0;
+
+    // // Calculate the body relative forces - mechanics
+    // X = -mass*g*std::sin(theta); // theta
+    // Y = mass*g*std::sin(phi)*std::cos(theta); // phi & theta
+    // Z = -M1_F - M2_F - M3_F - M4_F; // Prop forces are negative due to NED reference frame
+    // Z = Z + mass*g*std::cos(phi)*std::cos(theta);
+    // // Calculate the body relative forces - add aerodynamics
+    // // TBD
+
+    // // Calculate the body relative torques
+    // K = (M1_F + M2_F - M3_F - M4_F) * LA;          // Roll
+    // M = (M1_F + M4_F - M2_F - M3_F) * LA;          // Pitch
+    // N = (M1_T + M2_T + M3_T + M4_T);               // Yaw
+    // // Calculate the body relative torques - add aerodynamics
+
+    // // Calculate Accelerations
+
+    // // Run Solver
+    // // calcAccels();
+    // // calcVelocities();
+    // // calcPositions();
+}
+
+void Simulator::rungeKutta(void)
+{
+    // Call calcDerivatives 4 times and then recompute the state array
+    calcDerivatives(state_array);
+    K1 = return_array;
+    temp_array = state_array + 0.5*dt*K1;
+    calcDerivatives(temp_array);
+    K2 = return_array;
+    temp_array = state_array + 0.5*dt*K2;
+    calcDerivatives(temp_array);
+    K3 = return_array;
+    temp_array = state_array + dt*K3;
+    calcDerivatives(temp_array);
+    K4 = return_array;
+
+    // Calculate the new state array
+    state_array = state_array + (dt/6)*(K1 + 2*K2 + 2*K3 + K4);
+
+    // Correct for a ground condition
+    if(state_array(8) < 0)
+    {
+        state_array(8) = 0.0;
+    }
+
+    // Wrap Roll around +/- 180 degrees (+/- PI Radians)
+    if(state_array(9) > pi)
+    {
+        state_array(9) = state_array(9) - 2*pi;
+    }
+    if(state_array(9) < -pi)
+    {
+        state_array(9) = state_array(9) + 2*pi;
+    }
+
+    // Limit Pitch to +/- 89 degrees to avoid gimbal lock in calc (TO DO - USE QUATERNIONS)
+    if(state_array(10) > (pi/2) - .017543)
+    {
+        state_array(10) = (pi/2) - .017543;
+    }
+    if(state_array(10) < -(pi/2) + .017543)
+    {
+        state_array(10) = -(pi/2) + .017543;
+    }
+
+
+}
+
+void Simulator::calcDerivatives( VectorXf &input_array )
+{
+
+    // Unpack the Variables First
+    u         = input_array(0);
+    v         = input_array(1);
+    w         = input_array(2);
+    p         = input_array(3);
+    q         = input_array(4);
+    r         = input_array(5);
+    northings = input_array(6);
+    eastings  = input_array(7);
+    elevation = input_array(8);
+    phi       = input_array(9);
+    theta     = input_array(10);
+    phi       = input_array(11);
+
+    // Calculate the Body Relative Forces
     X = -mass*g*std::sin(theta); // theta
     Y = mass*g*std::sin(phi)*std::cos(theta); // phi & theta
     Z = -M1_F - M2_F - M3_F - M4_F; // Prop forces are negative due to NED reference frame
@@ -170,22 +303,59 @@ void Simulator::process(void)
     // Calculate the body relative forces - add aerodynamics
     // TBD
 
-    // Calculate the body relative torques
+    // Calculate the Body Relative Torques
     K = (M1_F + M2_F - M3_F - M4_F) * LA;          // Roll
     M = (M1_F + M4_F - M2_F - M3_F) * LA;          // Pitch
     N = (M1_T + M2_T + M3_T + M4_T);               // Yaw
-    // Calculate the body relative torques - add aerodynamics
 
-    // Calculate Accelerations
-    calcAccels();
-    calcVelocities();
-    calcPositions();
+    // Calculate the Accelerations, which can only occur if the elevation is above 0
+    if(elevation >= 0)
+    {
+        u_dot = -g*std::sin(theta) + r*v - q*w;
+        v_dot = g*std::sin(phi)*std::cos(theta) - r*u + p*w;
+        w_dot = (1/mass)*(Z) + q*u - p*v;
+        p_dot = (1/Ixx)*(K + (Iyy-Izz)*q*r);
+        q_dot = (1/Iyy)*(M + (Izz-Ixx)*p*r);
+        r_dot = (1/Izz)*(N + (Ixx-Iyy)*p*q);
+    }
+    else
+    {
+        u_dot = 0.0;
+        v_dot = 0.0;
+        w_dot = 0.0;
+        p_dot = 0.0;
+        q_dot = 0.0;
+        r_dot = 0.0;
+    }
+
+    // Calculate the World Positional Velocities
+    X_dot = std::cos(theta)*std::cos(psi)*u +
+            (-std::cos(phi)*std::sin(psi) + std::sin(phi)*std::sin(theta)*std::cos(psi))*v +
+            (std::sin(phi)*std::sin(psi) + std::cos(phi)*std::sin(theta)*std::cos(psi))*w;
+    Y_dot = std::cos(theta)*std::sin(psi)*u + 
+            (std::cos(phi)*std::cos(psi) + std::sin(phi)*std::sin(theta)*std::sin(psi))*v +
+            (-std::sin(phi)*std::cos(psi) + std::cos(phi)*std::sin(theta)*std::sin(psi))*w;
+    Z_dot = -1.0*(-std::sin(theta)*u + std::sin(phi)*std::cos(theta)*v + std::cos(phi)*std::cos(theta)*w);
+
+    // Calculate the World Attitude Rates
+    phi_dot = p + ( q*std::sin(phi) + r*std::cos(phi) )*std::tan(theta);
+    theta_dot = q*std::cos(phi) - r*std::sin(phi);
+    psi_dot = (q*std::sin(phi) + r*std::cos(phi))*(1/std::cos(theta));
+
+    return_array(0) = u_dot;
+    return_array(1) = v_dot;
+    return_array(2) = w_dot;
+    return_array(3) = p_dot;
+    return_array(4) = q_dot;
+    return_array(5) = r_dot;
+    return_array(6) = X_dot;
+    return_array(7) = Y_dot;
+    return_array(8) = Z_dot;
+    return_array(9) = phi_dot;
+    return_array(10) = theta_dot;
+    return_array(11) = psi_dot;
+
 }
-
-// float * Simulator::rungeKutta(float input_array[12])
-// {
-
-// }
 
 void Simulator::calcAccels(void)
 {
@@ -247,7 +417,7 @@ void Simulator::calcVelocities(void)
     }
 
     // Second, Earth relative rotational velocities and translational velocities
-    phi_dot = p + (q*std::sin(phi) + r*std::cos(phi))*std::tan(theta);
+    phi_dot = p + ( q*std::sin(phi) + r*std::cos(phi) )*std::tan(theta);
     theta_dot = q*std::cos(phi) - r*std::sin(phi);
     psi_dot = (q*std::sin(phi) + r*std::cos(phi))*(1/std::cos(theta));
     X_dot = std::cos(theta)*std::cos(psi)*u +

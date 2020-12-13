@@ -15,6 +15,7 @@
 // 3rd Party Libraries
 #include "INIReader.h"
 #include <ros/ros.h>
+#include <eigen3/Eigen/Dense>
 
 // User Libraries
 #include "/root/ros_catkin_ws/devel/include/picopter/Altitude_msg.h"
@@ -24,6 +25,8 @@
 #include "/root/ros_catkin_ws/devel/include/picopter/Motors_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Navigator_msg.h"
 #include "/root/ros_catkin_ws/devel/include/picopter/Sim_msg.h"
+
+using namespace Eigen;
 
 class Simulator
 {
@@ -39,7 +42,9 @@ class Simulator
 
         void process(void);
 
-        //float * rungeKutta(float input_array[12]);
+        void rungeKutta(void);
+
+        void calcDerivatives( VectorXf &input_array );
 
         void calcAccels(void);
 
@@ -120,13 +125,17 @@ class Simulator
         float rho;              // Air Density, kg/m^3
         float lat;              // Latitude, degree decimal
         float lon;              // Longitude, degree decimal
+        float pi;               // 3.14
         // Runge-Kutta Solver Variables and Arrays
         double sim_freq;         // Frequency of solver
-        float dt;               // Time step of solver
-        float k1[12];            // Array of 6 velocities and 6 positions
-        float k2[12];            // ""
-        float k3[12];            // ""
-        float k4[12];            // ""
+        float dt;                // Time step of solver
+        VectorXf return_array;  // An array updated only by the calcDerivatives Function
+        VectorXf state_array;   // Current Array of 6 velocities and 6 positions
+        VectorXf temp_array;    // Intermediate Array of 6 velocities & 6 positions
+        VectorXf K1;            // Runge Kutta Array of 6 acclerations and 6 velocities
+        VectorXf K2;            // ""
+        VectorXf K3;            // ""
+        VectorXf K4;            // ""
         // Simulation time
         float sim_time;
 

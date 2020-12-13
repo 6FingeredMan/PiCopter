@@ -33,7 +33,8 @@ StandardPID::StandardPID()
     state_accel(0.0),
     rate_cmd(0.0),
     cmd(0.0),
-    dt(0.02)
+    dt(0.02),
+    feed_forward(0.0)
 {
     reset();
 }
@@ -50,18 +51,19 @@ void StandardPID::loadConfig(std::string & DOF)
     INIReader reader("/root/ros_catkin_ws/src/picopter/config/ini_test.ini");
 
     // First Read the Positional Controller Coefficients
-    Kp = reader.GetReal(DOF, "Kp", 3.0);
+    Kp = reader.GetReal(DOF, "Kp", 0.0);
     Ki = reader.GetReal(DOF, "Ki", 0.0);
     Kd = reader.GetReal(DOF, "Kd", 0.0);
     maxI = reader.GetReal(DOF, "maxI", 0.0);
     max = reader.GetReal(DOF, "max", 0.0);
 
     // Then Read the Rate Controller Coefficients
-    KpR = reader.GetReal(DOF, "Kp Rate", 3.0);
+    KpR = reader.GetReal(DOF, "Kp Rate", 0.0);
     KiR = reader.GetReal(DOF, "Ki Rate", 0.0);
     KdR = reader.GetReal(DOF, "Kd Rate", 0.0);
-    maxIR = reader.GetReal(DOF, "maxI Rate", 10.0);
-    maxR = reader.GetReal(DOF, "max Rate", 25.0);
+    maxIR = reader.GetReal(DOF, "maxI Rate", 0.0);
+    maxR = reader.GetReal(DOF, "max Rate", 0.0);
+    feed_forward = reader.GetReal(DOF, "feed forward", 0.0);
 
     // DEBUG ONLY
     // std::cout << "Created a " << DOF << " PID Controller." << std::endl;
@@ -93,27 +95,13 @@ void StandardPID::process(void)
     I += Ki*error*dt;
 
     // Clamp the Integrator
-    if(I > maxI)
-    {
-        I = maxI;
-    }
-    if(I < -maxI)
-    {
-        I = -maxI;
-    }
+    limit(I, maxI);
 
     // Compute the command and clamp it
     rate_cmd = Kp*error - Kd*state_rate + I;
 
-    if(rate_cmd > max)
-    {
-        rate_cmd = max;
-    }
-
-    if(rate_cmd < -max)
-    {
-        rate_cmd = -max;
-    }
+    // Clamp the Rate command
+    limit(rate_cmd, max);
 
     ///////////////////////////////////////////////
     // RATE CONTROL 
@@ -123,28 +111,13 @@ void StandardPID::process(void)
     IR += KiR*rate_error*dt;
 
     // Clamp the Integrator
-    if(IR > maxIR)
-    {
-        IR = maxIR;
-    }
-    if(IR < -maxIR)
-    {
-        IR = -maxIR;
-    }
+    limit(IR, maxIR);
 
     // Compute the command and clamp it
-    cmd = KpR*rate_error + KdR*state_accel + IR;
+    cmd = KpR*rate_error - KdR*state_accel + IR + feed_forward;
 
-    if(cmd > maxR)
-    {
-        cmd = maxR;
-    }
-
-    if(cmd < 0)
-    {
-        cmd = 0.0;
-    }
-
+    // Clamp the Output command
+    limit(cmd, maxR);
 }
 
 float StandardPID::returnCmd(void)
@@ -160,4 +133,19 @@ float StandardPID::returnTargetPosition(void)
 float StandardPID::returnTargetRate(void)
 {
     return rate_cmd;
+}
+
+float StandardPID::limit(float input, float limit)
+{
+    if(input > limit)
+    {
+        input = limit;
+    }
+
+    if(input < -limit)
+    {
+        input = -limit;
+    }
+
+    return input;
 }

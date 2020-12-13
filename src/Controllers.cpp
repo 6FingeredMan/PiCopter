@@ -15,13 +15,15 @@
 // User Libraries
 #include "Controllers.h"
 #include "StandardPID.h"
+#include "StandardAltitude.h"
 #include "SuperTwistingSMC.h"
 
 ControllerFactory *ControllerFactory::_instance = 0;
 
 ControllerFactory::ControllerFactory() : _controllerNameToEnum() {
-    _controllerNameToEnum[ "PID" ]     = STANDARD_PID;
-    _controllerNameToEnum[ "STSMC" ]   = SUPER_TWISTING_SMC;
+    _controllerNameToEnum[ "PID" ]      = STANDARD_PID;
+    _controllerNameToEnum[ "ALTITUDE" ] = STANDARD_ALTITUDE;
+    _controllerNameToEnum[ "STSMC" ]    = SUPER_TWISTING_SMC;
 }
 
 ControllerInterface *ControllerFactory::createController( std::string & type ) {
@@ -29,6 +31,8 @@ ControllerInterface *ControllerFactory::createController( std::string & type ) {
     switch( iter->second ) {
         case( STANDARD_PID ):
             return new StandardPID();
+        case( STANDARD_ALTITUDE ):
+            return new StandardAltitude();
         case( SUPER_TWISTING_SMC ):
             return new SuperTwistingSMC();
     }

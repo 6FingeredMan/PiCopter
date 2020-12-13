@@ -82,6 +82,11 @@ public:
     int end_objective_number;
     double obj_start_time;
     double obj_end_time;
+    float navigator_frequency;
+    bool nav_override_status;
+    float roll_goal;
+    float pitch_goal;
+    float yaw_goal;
     std::string curObjHeader;
     std::string curObj;
     picopter::Navigator_msg nav_msg;
@@ -135,6 +140,9 @@ private:
 
     // Land behavior - lands the quad
     void land(void);
+
+    // Testing Objective
+    void setStatesExplicit(void);
 	
 };
 

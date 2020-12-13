@@ -41,7 +41,15 @@ void SuperTwistingSMC::reset(void)
 
 void SuperTwistingSMC::loadConfig(std::string & DOF)
 {
-    // TO DO
+    INIReader reader("/root/ros_catkin_ws/src/picopter/config/ini_test.ini");
+
+    // First Read the Positional Controller Coefficients
+    c = reader.GetReal(DOF, "c", 3.0);
+    lambda = reader.GetReal(DOF, "lambda", 0.0);
+    W = reader.GetReal(DOF, "W", 0.0);
+    maxI = reader.GetReal(DOF, "maxI", 0.0);
+    max = reader.GetReal(DOF, "max", 0.0);
+
 }
 
 void SuperTwistingSMC::setTarget(float val)
@@ -85,6 +93,10 @@ void SuperTwistingSMC::process(void)
     {
         cmd = 100.0;
     }
+    if(cmd < -max)
+    {
+        cmd = -max;
+    }
 
 }
 
@@ -100,7 +112,7 @@ float SuperTwistingSMC::returnTargetPosition(void)
 
 float SuperTwistingSMC::returnTargetRate(void)
 {
-    return cmd;
+    return 0.;
 }
 
 

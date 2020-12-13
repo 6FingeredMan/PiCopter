@@ -21,7 +21,6 @@
 #include "/root/ros_catkin_ws/devel/include/picopter/Sim_msg.h"
 
 // Macros
-#define R2D 57.2958
 
 class AHRS_SIM
 {
@@ -54,6 +53,7 @@ public:
     float roll_rate_noise;
     float yaw_rate_noise;
     float sim_rate;
+	float R2D;
 
 private:
 

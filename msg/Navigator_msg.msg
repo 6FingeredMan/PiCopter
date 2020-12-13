@@ -4,3 +4,7 @@ float32 target_speed
 bool idle
 string current_objective
 float32 objectives_remaining
+bool override_attitude_targets
+float32 roll_goal
+float32 pitch_goal
+float32 yaw_goal

@@ -45,6 +45,10 @@ Navigator::Navigator()
     objective_number(1),
     prev_objective_number(0),
     end_objective_number(0),
+    nav_override_status(false),
+    roll_goal(0.0),
+    pitch_goal(0.0),
+    yaw_goal(0.0),
     curObjHeader("Objective "),
     curObj("Idle"),
     reader("/root/ros_catkin_ws/src/picopter/config/mission.ini")
@@ -69,13 +73,16 @@ void Navigator::missionCheck(void)
 
 void Navigator::startNavigator(void)
 {
+    // Get the update rate of the navigator for publishing
+    navigator_frequency = reader.GetReal("Navigator", "update rate (Hz)", 50);
+
     // First, fire up the subscribers with their callbacks
     gps_sub = n.subscribe<picopter::Gps_msg>("gps_data", 1, &Navigator::setLatLon, this);
     altitude_sub = n.subscribe<picopter::Altitude_msg>("altitude_data", 1, &Navigator::setAltitude, this);
 
     // Runs the main process
     nav_pub = n.advertise<picopter::Navigator_msg>("nav_data", 1);
-    ros::Rate loop_rate(50);
+    ros::Rate loop_rate(navigator_frequency);
     while (ros::ok)
     {
         process();
@@ -92,6 +99,10 @@ void Navigator::startNavigator(void)
         {
             nav_msg.objectives_remaining = 0;
         }
+        nav_msg.override_attitude_targets = nav_override_status;
+        nav_msg.roll_goal = roll_goal;
+        nav_msg.pitch_goal = pitch_goal;
+        nav_msg.yaw_goal = yaw_goal;
         
         nav_pub.publish(nav_msg);
         ros::spinOnce();
@@ -135,8 +146,7 @@ void Navigator::process(void)
         return;
     }
 
-    // This super hacky - TO DO - use a map and stop
-    // reading from the mission.ini every damn loop... it's slow.
+    // This super hacky - TO DO - use a map instead
     if(curObj == "Idle")
     {
         idle();
@@ -170,6 +180,11 @@ void Navigator::process(void)
     if(curObj == "Land")
     {
         land();
+        return;
+    }
+    if(curObj == "Set States Explicit")
+    {
+        setStatesExplicit();
         return;
     }
 }
@@ -224,6 +239,10 @@ void Navigator::setTargetStates(void)
         heading_rate_target = 0.0;
     }
 
+    roll_goal = reader.GetReal(curObjHeader, "Roll Goal (deg)", 0.0);
+    pitch_goal = reader.GetReal(curObjHeader, "Pitch Goal (deg)", 0.0);
+    yaw_goal = reader.GetReal(curObjHeader, "Yaw Goal (deg)", 0.0);
+
 
 }
 
@@ -277,8 +296,28 @@ void Navigator::navigate(void)
 void Navigator::land(void)
 {
     idle_status = false;
+    if(altitude <= .05)
+    {
+        objective_number += 1;
+    }
 
     // TO DO - create a flag for the autopilot to gracefully land
+}
+
+void Navigator::setStatesExplicit(void)
+{
+    // This Function Doesn't Need to do Anything Unique
+    // The Autopilot will see the current objective
+    // as Set States Explicit and set the objective 
+    // values to the targets
+    idle_status = false;
+    nav_override_status = true;
+
+    if (getTime() >= obj_end_time)
+   {
+       objective_number += 1;
+       nav_override_status = false;
+   }
 }
 
 void Navigator::createMissionTemplate(void)

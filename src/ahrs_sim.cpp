@@ -23,7 +23,6 @@
 #include "/root/ros_catkin_ws/devel/include/picopter/Navigator_msg.h"
 
 // Macros
-#define R2D 57.2958
 
 AHRS_SIM::AHRS_SIM()
 :
@@ -36,7 +35,8 @@ yaw_noise(0.0),
 pitch_rate_noise(0.0),
 roll_rate_noise(0.0),
 yaw_rate_noise(0.0),
-sim_rate(100.0)
+sim_rate(100.0),
+R2D(57.2958)
 {
     loadConfig();
     startAhrs();

@@ -25,7 +25,6 @@
 #include "/root/ros_catkin_ws/devel/include/picopter/Navigator_msg.h"
 
 // Macros
-#define PI 3.14159265
 
 Autopilot::Autopilot()
 :
@@ -52,7 +51,11 @@ Autopilot::Autopilot()
     elevation_last(0.0),
     elevation_rate(0.0),
     elevation_rate_last(0.0),
-    elevation_accel(0.0)
+    elevation_accel(0.0),
+    R2D(57.2958),
+    D2R(0.0174533),
+    controller_frequency(10),
+    navigator_override(false)
 {
     _controllerPrefix[altitude] = "Altitude Control";
     _controllerPrefix[speed] = "Speed Control";
@@ -68,6 +71,10 @@ void Autopilot::loadConfig(void)
 {
     // Declare an ini reader instance and pass it the location of the ini file
     INIReader reader("/root/ros_catkin_ws/src/picopter/config/ini_test.ini");
+
+    // Get the update rate of the autopilot
+    controller_frequency = reader.GetReal("Autopilot", "update rate (Hz)", 50);
+
     std::string temp; // Used as a temporary string to store an ini string
 
     // Loop through all of the controllers, read their congfig type, and return 
@@ -102,7 +109,7 @@ void Autopilot::startAutopilot(void)
     // Runs the main process
     motor_pub = n.advertise<picopter::Motors_msg>("motor_cmds", 1);
     pilot_pub = n.advertise<picopter::Autopilot_msg>("autopilot_data", 1);
-    ros::Rate loop_rate(50);
+    ros::Rate loop_rate(controller_frequency);
     while (ros::ok)
     {
         // If the idle status is false, 
@@ -149,6 +156,31 @@ void Autopilot::setNavStates(const picopter::Navigator_msg::ConstPtr& msg)
     elevation_target = msg->target_elevation;
     yaw_target = msg->target_course;
     idle_status = msg->idle;
+    navigator_override = msg->override_attitude_targets;
+    
+    // If the navigator is trying to override the autopilot's
+    // computed targets for the attitude controllers, then bypass the
+    // conversion from Nav data to Attitude Targets.
+    if(navigator_override == true)
+    {
+        roll_target = msg->roll_goal;
+        pitch_target = msg->pitch_goal;
+        yaw_target = msg->yaw_goal;
+    }
+    else // Let the autopilot determine the attitude states
+    {
+        convertNavToAttitude();
+    }
+    
+}
+
+void Autopilot::convertNavToAttitude(void)
+{
+
+    roll_target = 0.0;
+    pitch_target = 0.0;
+    yaw_target = 0.0;
+
 }
 
 void Autopilot::setElevationState(const picopter::Elevation_msg::ConstPtr& msg)
@@ -160,16 +192,14 @@ void Autopilot::setElevationState(const picopter::Elevation_msg::ConstPtr& msg)
     elevation_rate_last = elevation_rate;
     
     _controllers[altitude]->setStates(elevation, elevation_rate, elevation_accel);
-    
 }
 
 void Autopilot::setTargets(void)
 {
-    // TEMPORARY
     _controllers[altitude]->setTarget(elevation_target);
-    _controllers[pitch]->setTarget(0.0);
-    _controllers[roll]->setTarget(0.0);
-    _controllers[yaw]->setTarget(0.0); 
+    _controllers[pitch]->setTarget(pitch_target);
+    _controllers[roll]->setTarget(roll_target);
+    _controllers[yaw]->setTarget(yaw_target); 
 }
 
 void Autopilot::processLoops(void)
@@ -189,11 +219,9 @@ void Autopilot::processLoops(void)
     _controllers[roll]->process();
     _controllers[yaw]->process();
 
-    
+    // Get their output commands
     pitch_cmd = _controllers[pitch]->returnCmd();
-    pitch_cmd = 0.0;
     roll_cmd = _controllers[roll]->returnCmd();
-    roll_cmd = 0.0;
     yaw_cmd = _controllers[yaw]->returnCmd();
     z_cmd = _controllers[altitude]->returnCmd();
 
@@ -206,74 +234,55 @@ void Autopilot::mix(void)
     // and updates the motor_cmd message before publishing to the topic.
 
     // Step 1 - compensate for pitch and roll to correct the altitude command...
-    // in theory this lets the altitude controller integrator compensate for battery drain
-    z_cmd = z_cmd / ( std::cos(pitch_val * PI / 180.0) * std::cos(roll_val * PI / 180.0) );
-
-    if(z_cmd > 100.0)
-    {
-        z_cmd = 100.0;
-    }
-    if(z_cmd < 0.0)
-    {
-        z_cmd = 0.0;
-    }
+    // in theory this lets the altitude controller integrators compensate for battery drain
+    z_cmd = z_cmd / ( std::cos(pitch_val * D2R) * std::cos(roll_val * D2R) );
+    z_cmd = limit(z_cmd, 100.0); // limit to 100% 
+    z_cmd = limitZero(z_cmd);     // limit to 0 - 100%
+    // ROS_ERROR_STREAM("z_cmd: " << z_cmd << " roll_cmd: " << roll_cmd << " pitch_cmd: " << pitch_cmd);
 
     M1_cmd = z_cmd;
     M2_cmd = z_cmd;
     M3_cmd = z_cmd;
     M4_cmd = z_cmd;
 
-    // Step 2 - add the pitch command
+    // Step 2 - check for saturation
+    // TO DO
+
+    // Step 3 - add the pitch command
     M1_cmd += pitch_cmd;
     M2_cmd -= pitch_cmd;
     M3_cmd -= pitch_cmd;
     M4_cmd += pitch_cmd;
 
-    // Step 3 -- add the roll command
+    // Step 4 -- add the roll command
     M1_cmd += roll_cmd;
     M2_cmd += roll_cmd;
     M3_cmd -= roll_cmd;
     M4_cmd -= roll_cmd;
 
-    // Step 4 -- add the yaw command
+    // Step 5 -- add the yaw command
     M1_cmd -= yaw_cmd;          // CW Prop, (-) yaw torque
     M2_cmd += yaw_cmd;          // CCW Prop, (+) yaw torque
     M3_cmd -= yaw_cmd;          // CW Prop, (-) yaw torque
     M4_cmd += yaw_cmd;          // CCW Prop, (+) yaw torque
 
-    // Step 5 -- check for bad data ouput like NaN and set all motors to 0 if 
-    //           bad data is found
-    if (isnan(M1_cmd))
-    {
-        M1_cmd = 0.0;
-        M2_cmd = 0.0;
-        M3_cmd = 0.0;
-        M4_cmd = 0.0;
-    }
-    if (isnan(M2_cmd))
-    {
-        M1_cmd = 0.0;
-        M2_cmd = 0.0;
-        M3_cmd = 0.0;
-        M4_cmd = 0.0;
-    }
-    if (isnan(M3_cmd))
-    {
-        M1_cmd = 0.0;
-        M2_cmd = 0.0;
-        M3_cmd = 0.0;
-        M4_cmd = 0.0;
-    }
-    if (isnan(M4_cmd))
-    {
-        M1_cmd = 0.0;
-        M2_cmd = 0.0;
-        M3_cmd = 0.0;
-        M4_cmd = 0.0;
-    }
+    // Step 6 -- Check for Nan
+    checkNaN();
 
+    // Step 7 -- Limit Commands to be zero or above
+    limitZero(M1_cmd);
+    limitZero(M2_cmd);
+    limitZero(M3_cmd);
+    limitZero(M4_cmd);
+
+    // Step 8 -- Prep Autopilot Data for publishing
     collectAutopilotData();
 
+}
+
+void Autopilot::saturate(void)
+{
+    // TO DO
 }
 
 void Autopilot::collectAutopilotData(void)
@@ -292,4 +301,40 @@ void Autopilot::collectAutopilotData(void)
     pilot_msg.target_yaw_position = _controllers[yaw]->returnTargetPosition();
     pilot_msg.target_yaw_rate = _controllers[yaw]->returnTargetRate();
 
+}
+
+float Autopilot::limitZero(float input)
+{
+    if(input < 0)
+    {
+        input = 0.0;
+    }
+
+    return input;
+}
+
+float Autopilot::limit(float input, float limit)
+{
+    if(input > limit)
+    {
+        input = limit;
+    }
+
+    if(input < -limit)
+    {
+        input = -limit;
+    }
+
+    return input;
+}
+
+void Autopilot::checkNaN(void)
+{
+    if (isnan(M1_cmd) || isnan(M2_cmd) || isnan(M3_cmd) || isnan(M4_cmd))
+    {
+        M1_cmd = 0.0;
+        M2_cmd = 0.0;
+        M3_cmd = 0.0;
+        M4_cmd = 0.0;
+    }
 }

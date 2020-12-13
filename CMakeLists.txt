@@ -46,6 +46,7 @@ add_executable(autopilot
   src/autopilot.cpp
   src/Controllers.cpp
   src/StandardPID.cpp
+  src/StandardAltitude.cpp
   src/SuperTwistingSMC.cpp)
 target_link_libraries(autopilot ${catkin_LIBRARIES})
 add_dependencies(autopilot picopter_generate_messages_cpp)

@@ -5,8 +5,8 @@
 * @version   1.0.0
 * @brief     Defines a standard linear PID controller algorithm
 */
-#ifndef __STANDARD_PID_H__
-#define __STANDARD_PID_H__
+#ifndef __STANDARD_ALTITUDE_H__
+#define __STANDARD_ALTITUDE_H__
 
 // Included Libraries
 #include <string>
@@ -16,10 +16,10 @@
 // User Libraries
 #include "Controllers.h"
 
-class StandardPID : public ControllerInterface
+class StandardAltitude : public ControllerInterface
 {
     public:
-        StandardPID();
+        StandardAltitude();
         void reset(void);
         void loadConfig(std::string & DOF);
         void setTarget(float val);
@@ -28,27 +28,22 @@ class StandardPID : public ControllerInterface
         float returnCmd(void);
         float returnTargetPosition(void);
         float returnTargetRate(void);
-        float limit(float input, float limit);
+        void updateGravityThrottle(void);
 
     protected:
         float Kp, Ki, Kd;   // PID Gains For Positional Control
+        float g_throttle;   // Throttle term to offset quad's mass*gravity
         float I;            // Integrator Sum
         float maxI, max;    // Integrator limit and maximum command
-        float KpR, KiR, KdR;// PID Gains For Rate Control
-        float IR;           // Integrator Sum (Rate)
-        float maxIR, maxR;  // Integrator limit and maximum command (Rate)
         float target;       // Target state value
         float error;        // State error value
-        float rate_error;   // State rate error value
         float state;        // Current state value
         float state_rate;   // Current state derivative (rate)
-        float state_accel;  // Current state 2nd derivative (accel)
-        float rate_cmd;     // Rate command from positional controller
         float cmd;          // Output command (0-100%)
         float dt;           // 1/Hz (controller frequency in seconds)
-        float feed_forward; // Optional Feed forward term for the rate controller
+        float filter_count; // Used to determine whether the quad is at hover
 
 };
 
 
-#endif // __SUPER_TWISTING_SMC_H__
+#endif // __STANDARD_ALTITUDE_H__

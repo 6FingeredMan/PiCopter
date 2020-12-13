@@ -45,6 +45,9 @@ public:
 	// Sets the navigation states for the controllers
 	void setNavStates(const picopter::Navigator_msg::ConstPtr& msg);
 
+	// Converts a target course & speed to pitch & roll targets
+	void convertNavToAttitude(void);
+
 	// Sets elevation state for the controller
 	void setElevationState(const picopter::Elevation_msg::ConstPtr& msg);
 
@@ -58,8 +61,19 @@ public:
 	// and computes motor commands
 	void mix(void);
 
+	// Checks to see if any controllers are saturating the throttle
+	// command below zero or above 100
+	void saturate(void);
+
+	// Checks for NaN output and sets motors to zero if true
+	void checkNaN(void);
+
 	// Collects Autopilot data to publish
 	void collectAutopilotData(void);
+
+	float limitZero(float input);
+
+	float limit(float input, float limit);
 
 	// Public variable declarations
 	float M1_cmd;
@@ -83,6 +97,10 @@ public:
 	float elevation_rate;
 	float elevation_rate_last;
 	float elevation_accel;
+	float R2D;
+	float D2R;
+	float controller_frequency;
+	bool navigator_override;
 	picopter::Motors_msg motor_msg;
 	picopter::Autopilot_msg pilot_msg;
 

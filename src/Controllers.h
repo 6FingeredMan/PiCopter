@@ -26,6 +26,7 @@ class ControllerFactory
         enum ControllerType
         {
             STANDARD_PID,
+            STANDARD_ALTITUDE,
             SUPER_TWISTING_SMC
         };
 
