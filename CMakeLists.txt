@@ -78,5 +78,6 @@ catkin_install_python(PROGRAMS
   scripts/berryGPS.py
   scripts/bmp388.py
   scripts/bmp388_sim.py
+  scripts/berryGPS_sim.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

@@ -15,4 +15,7 @@
 <!-- Create the Simulated elevation node -->
 <node pkg="picopter" name="elevation_sensor_sim" type="bmp388_sim.py" />
 
+<!-- Create the Simulated GPS node -->
+<node pkg="picopter" name="gps_sim" type="berryGPS_sim.py" />
+
 </launch>

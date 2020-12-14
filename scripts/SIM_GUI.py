@@ -8,6 +8,7 @@
 ###################################################
 # Included Libraries
 ###################################################
+import ConfigParser
 import csv
 import sys
 import os
@@ -43,6 +44,18 @@ from picopter.msg import Navigator_msg
 class App():
 
     def __init__(self):
+
+        # Read the configuration file
+        config = ConfigParser.RawConfigParser(allow_no_value=True)
+        config.read('/home/brendan/ros_catkin_ws/src/picopter/config/SIM_GUI_CONFIG.ini')
+        self.update_tree_frequency = config.getfloat("Data Tree", "Update Frequency (Hz)")
+        self.update_frequency = config.getfloat("Plotting", "Update Frequency (Hz)")
+        self.plot_length_sec = config.getfloat("Plotting", "Plot Length (sec)")
+        self.plot_array_size = int(self.update_frequency * self.plot_length_sec)
+        self.plot_check_msec = (1.0 / self.update_frequency) * 1000
+        self.data_tree_check_msec = (1.0 / self.update_tree_frequency) * 1000
+
+
         # Create Master window
         self.master = Tk()
         self.master.title("PiCopter Monitor")
@@ -172,7 +185,7 @@ class App():
         self.default_figure = Figure(figsize=(5,5), dpi=100)
         self.canvas = FigureCanvasTkAgg(self.default_figure, master=self.master)
         self.default_plot_1 = self.default_figure.add_subplot(221)
-        self.default_plot_2 = self.default_figure.add_subplot(222, projection='3d')
+        self.default_plot_2 = self.default_figure.add_subplot(222)
         self.default_plot_3 = self.default_figure.add_subplot(223)
         self.default_plot_4 = self.default_figure.add_subplot(224)
         self.canvas.draw()
@@ -182,7 +195,6 @@ class App():
         self.pbar = NavigationToolbar2Tk(self.canvas, self.default_plot_frame)
 
         ## Initialized default plotting values
-        self.plot_array_size = 60
         self.pitch_array = np.zeros(self.plot_array_size)
         self.roll_array = np.zeros(self.plot_array_size)
         self.yaw_array = np.zeros(self.plot_array_size)
@@ -207,10 +219,9 @@ class App():
         self.canvasAP.get_tk_widget().grid(row=0, column=1, columnspan=1, rowspan=6, stick=W+E+N+S)
         self.autopilot_plot_frame = Frame(self.master)
         self.autopilot_plot_frame.grid(row=2, column=1, columnspan=1)
-        self.pbar = NavigationToolbar2Tk(self.canvasAP, self.autopilot_plot_frame)
+        self.pbarAP = NavigationToolbar2Tk(self.canvasAP, self.autopilot_plot_frame)
 
         ## Initialized default plotting values
-        self.plot_array_size = 60
         self.pitch_array = np.zeros(self.plot_array_size)
         self.pitch_rate_array = np.zeros(self.plot_array_size)
         self.roll_array = np.zeros(self.plot_array_size)
@@ -231,7 +242,7 @@ class App():
         self.roll_rate_target_array = np.zeros(self.plot_array_size)
         self.yaw_rate_target_array = np.zeros(self.plot_array_size)
         self.elevation_rate_target_array = np.zeros(self.plot_array_size)
-        self.time_array = np.zeros(self.plot_array_size)
+        #self.time_array = np.zeros(self.plot_array_size)
 
 
     def update_default_plot(self):
@@ -255,14 +266,6 @@ class App():
         self.northings_array[self.plot_array_size - 1] = self.northings
         self.eastings_array[self.plot_array_size - 1] = self.eastings
         self.time_array[self.plot_array_size - 1] = self.sim_time
-        # self.pitch_array[9] = 0.0
-        # self.roll_array[9] = 0.0
-        # self.yaw_array[9] = 0.0
-        # self.elevation_array[9] = 0.0
-        # self.altitude_array[9] = 0.0
-        # self.northings_array[9] = 0.0
-        # self.eastings_array[9] = 0.0
-        # self.time_array[9] = self.sim_time
 
         # Clear the plots
         self.default_plot_1.clear()
@@ -276,24 +279,29 @@ class App():
         self.default_plot_1.legend()
         self.default_plot_1.grid()
         self.default_plot_1.set_xlim(round(self.time_array[0]-1), round(self.time_array[self.plot_array_size - 1])+1)
+        self.default_plot_1.set_ylim(-45, 45)
         self.default_plot_1.set_xlabel('Sim Time (sec)')
         self.default_plot_1.set_ylabel('Attitude (deg)')
-        self.default_plot_2.scatter(self.eastings_array, self.northings_array, self.elevation_array, label="3D Track")
+        self.default_plot_2.scatter(self.eastings_array, self.northings_array, label="2D Track")
         self.default_plot_2.legend()
         self.default_plot_2.grid()
+        self.default_plot_2.ticklabel_format(useOffset=False, style='plain')
+        self.default_plot_2.set_ylim(round(self.northings_array[self.plot_array_size - 1] - 5), round(self.northings_array[self.plot_array_size - 1] + 5))
+        self.default_plot_2.set_xlim(round(self.eastings_array[self.plot_array_size - 1] - 5), round(self.eastings_array[self.plot_array_size - 1] + 5))
         self.default_plot_2.set_xlabel('Eastings (m)')
         self.default_plot_2.set_ylabel('Northings (m)')
-        self.default_plot_2.set_zlabel('Elevation (m)')
         self.default_plot_3.plot(self.time_array, self.yaw_array, label="Yaw")
         self.default_plot_3.legend()
         self.default_plot_3.grid()
         self.default_plot_3.set_xlim(round(self.time_array[0]-1), round(self.time_array[self.plot_array_size - 1])+1)
+        self.default_plot_3.set_ylim(0, 360)
         self.default_plot_3.set_xlabel('Sim Time (sec)')
         self.default_plot_3.set_ylabel('Yaw (deg)')
         self.default_plot_4.plot(self.time_array, self.elevation_array, label="Elevation")
         self.default_plot_4.legend()
         self.default_plot_4.grid()
         self.default_plot_4.set_xlim(round(self.time_array[0]-1), round(self.time_array[self.plot_array_size - 1])+1)
+        self.default_plot_4.set_ylim(0, round(self.elevation_array[self.plot_array_size - 1])+1)
         self.default_plot_4.set_xlabel('Sim Time (sec)')
         self.default_plot_4.set_ylabel('Elevation (m)')
         self.canvas.draw()
@@ -303,7 +311,7 @@ class App():
         # First shift all the array data to the left by one index
         for i in range(self.plot_array_size - 1):
             self.pitch_array[i] = self.pitch_array[i+1]
-            self.pitch_rate_array[i] = self.pitch_array[i+1]
+            self.pitch_rate_array[i] = self.pitch_rate_array[i+1]
             self.roll_array[i] = self.roll_array[i+1]
             self.roll_rate_array[i] = self.roll_rate_array[i+1]
             self.yaw_array[i] = self.yaw_array[i+1]
@@ -429,7 +437,7 @@ class App():
 
         # Only update tree view with data twice a second and only if the sim data view is enabled
         self.time_now_tree = int(round(time.time() * 1000))
-        if ((self.time_now_tree - self.time_last_tree) >= 500) and self.sim_data_tree_enabled.get():
+        if ((self.time_now_tree - self.time_last_tree) >= self.data_tree_check_msec) and self.sim_data_tree_enabled.get():
             self.time_last_tree = self.time_now_tree
             self.STree.set('roll', '2', str(round(self.roll, 4)))
             self.STree.set('pitch', '2', str(round(self.pitch, 4)))
@@ -470,13 +478,13 @@ class App():
 
         # If the default plotter is enabled - call the function to update those plots with SIM data
         self.time_now_plot = int(round(time.time() * 1000))
-        if ((self.time_now_plot - self.time_last_plot) >= 500) and self.default_plotter_enabled.get():
+        if ((self.time_now_plot - self.time_last_plot) >= self.plot_check_msec) and self.default_plotter_enabled.get():
             self.time_last_plot = self.time_now_plot
             self.update_default_plot()
         
         # If the autopilot plotter is enabled - call the function to update those plots with SIM data
         self.time_now_plot = int(round(time.time() * 1000))
-        if ((self.time_now_plot - self.time_last_plot) >= 500) and self.autopilot_plotter_enabled.get():
+        if ((self.time_now_plot - self.time_last_plot) >= self.plot_check_msec) and self.autopilot_plotter_enabled.get():
             self.time_last_plot = self.time_now_plot
             self.update_autopilot_plot()
 
@@ -540,25 +548,25 @@ class App():
 
 
     def Unpack_SIM_Msg(self, data):
-        self.roll = data.roll
-        self.pitch = data.pitch
-        self.yaw = data.yaw
+        self.roll = data.roll * self.R2D
+        self.pitch = data.pitch * self.R2D
+        self.yaw = data.yaw * self.R2D
         self.elevation = data.elevation
         self.altitude = data.altitude
         self.northings = data.northings
         self.eastings = data.eastings
-        self.u_dot = data.u_dot
+        self.u_dot = data.u_dot 
         self.v_dot = data.v_dot
         self.w_dot = data.w_dot
-        self.p_dot = data.p_dot
-        self.q_dot = data.q_dot
-        self.r_dot = data.r_dot
+        self.p_dot = data.p_dot * self.R2D
+        self.q_dot = data.q_dot * self.R2D
+        self.r_dot = data.r_dot * self.R2D
         self.u = data.u
         self.v = data.v
         self.w = data.w
-        self.p = data.p
-        self.q = data.q
-        self.r = data.r
+        self.p = data.p * self.R2D
+        self.q = data.q * self.R2D
+        self.r = data.r * self.R2D
         self.M1 = data.motor_1_force
         self.M2 = data.motor_2_force
         self.M3 = data.motor_3_force
@@ -645,6 +653,8 @@ class App():
         self.idle_status = False
         self.current_objective = "N/A"
         self.objectives_remaining = 0.0
+
+        self.R2D = 57.2958 # radians to degrees
 
 if __name__ == "__main__":
     app = App()

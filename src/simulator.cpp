@@ -76,6 +76,7 @@ Simulator::Simulator():
     dt(0.005),
     sim_time(0.0),
     pi(3.1415926535),
+    D2R(0.0174533),
     reader("/root/ros_catkin_ws/src/picopter/config/simulation.ini")
 {
     loadConfig();
@@ -104,18 +105,18 @@ void Simulator::loadConfig(void)
     Voltage = float(reader.GetReal("Robot", "Voltage", 0.0));
 
     // Get Inital Conditions
-    state_array(0)  = float(reader.GetReal("Initial Conditions", "u", 0.0));
-    state_array(1)  = float(reader.GetReal("Initial Conditions", "v", 0.0));
-    state_array(2)  = float(reader.GetReal("Initial Conditions", "w", 0.0));
-    state_array(3)  = float(reader.GetReal("Initial Conditions", "p", 0.0));
-    state_array(4)  = float(reader.GetReal("Initial Conditions", "q", 0.0));
-    state_array(5)  = float(reader.GetReal("Initial Conditions", "r", 0.0));
+    state_array(0)  = float(reader.GetReal("Initial Conditions", "u (m/s)", 0.0));
+    state_array(1)  = float(reader.GetReal("Initial Conditions", "v (m/s)", 0.0));
+    state_array(2)  = float(reader.GetReal("Initial Conditions", "w (m/s)", 0.0));
+    state_array(3)  = float(reader.GetReal("Initial Conditions", "p (deg/s)", 0.0) * D2R);
+    state_array(4)  = float(reader.GetReal("Initial Conditions", "q (deg/s)", 0.0) * D2R);
+    state_array(5)  = float(reader.GetReal("Initial Conditions", "r (deg/s)", 0.0) * D2R);
     state_array(6)  = float(reader.GetReal("Initial Conditions", "northings", 0.0));
     state_array(7)  = float(reader.GetReal("Initial Conditions", "eastings", 0.0));
     state_array(8)  = float(reader.GetReal("Initial Conditions", "altitude", 0.0));
-    state_array(9)  = float(reader.GetReal("Initial Conditions", "phi", 0.0));
-    state_array(10) = float(reader.GetReal("Initial Conditions", "theta", 0.0));
-    state_array(11) = float(reader.GetReal("Initial Conditions", "psi", 0.0));
+    state_array(9)  = float(reader.GetReal("Initial Conditions", "phi (deg)", 0.0) * D2R);
+    state_array(10) = float(reader.GetReal("Initial Conditions", "theta (deg)", 0.0) * D2R);
+    state_array(11) = float(reader.GetReal("Initial Conditions", "psi (deg)", 0.0) * D2R);
 
     // Get Environment Parameters
     g = float(reader.GetReal("Environment", "gravity", 9.81));
@@ -249,13 +250,34 @@ void Simulator::rungeKutta(void)
     // Calculate the new state array
     state_array = state_array + (dt/6)*(K1 + 2*K2 + 2*K3 + K4);
 
+    // Calculate the acceleration values
+    temp_array = (1/6)*(K1 + K2 + K3 + K4);
+    u_dot = temp_array(0);
+    v_dot = temp_array(1);
+    w_dot = temp_array(2);
+    p_dot = temp_array(3);
+    q_dot = temp_array(4);
+    r_dot = temp_array(5);
+
     // Correct for a ground condition
     if(state_array(8) < 0)
     {
+        // Force minimum altitude to be 0
         state_array(8) = 0.0;
+        
+        // Force velocities to be = 0 if the quad elevation velocity is less than 0.0
+        if(Z_dot < 0)
+        {
+            state_array(0) = 0.0;
+            state_array(1) = 0.0;
+            state_array(2) = 0.0;
+            state_array(3) = 0.0;
+            state_array(4) = 0.0;
+            state_array(5) = 0.0;
+        }
     }
 
-    // Wrap Roll around +/- 180 degrees (+/- PI Radians)
+    // Limit Roll to +/- 180 degrees (+/- PI Radians)
     if(state_array(9) > pi)
     {
         state_array(9) = state_array(9) - 2*pi;
@@ -357,102 +379,6 @@ void Simulator::calcDerivatives( VectorXf &input_array )
 
 }
 
-void Simulator::calcAccels(void)
-{
-    // Check for NaN and reset to values to 0.0
-    if (isnan(p)) p = 0.0;
-    if (isnan(q)) q = 0.0;
-    if (isnan(r)) r = 0.0;
-    if (isnan(u)) u = 0.0;
-    if (isnan(v)) v = 0.0;
-    if (isnan(w)) w = 0.0;
-    if (isnan(X)) X = 0.0;
-    if (isnan(Y)) Y = 0.0;
-    if (isnan(Z)) Z = 0.0;
-    if (isnan(K)) K = 0.0;
-    if (isnan(M)) M = 0.0;
-    if (isnan(N)) N = 0.0;
-
-    u_dot = -g*std::sin(theta) + r*v - q*w;
-    v_dot = g*std::sin(phi)*std::cos(theta) - r*u + p*w;
-    w_dot = (1/mass)*(Z) + q*u - p*v;
-    p_dot = (1/Ixx)*(K + (Iyy-Izz)*q*r);
-    q_dot = (1/Iyy)*(M + (Izz-Ixx)*p*r);
-    r_dot = (1/Izz)*(N + (Ixx-Iyy)*p*q);
-
-}
-
-void Simulator::calcVelocities(void)
-{
-
-    // Check for NaN and reset to values to 0.0
-    if (isnan(p_dot)) p_dot = 0.0;
-    if (isnan(q_dot)) q_dot = 0.0;
-    if (isnan(r_dot)) r_dot = 0.0;
-    if (isnan(u_dot)) u_dot = 0.0;
-    if (isnan(v_dot)) v_dot = 0.0;
-    if (isnan(w_dot)) w_dot = 0.0;
-
-    // Using direct integration right now
-    // First, body translational velocities and rotational velocities 
-    // only if the elevation is > 0
-    if(elevation >= 0)
-    {
-        u += u_dot*dt;
-        v += v_dot*dt;
-        w += w_dot*dt;
-        p += p_dot*dt;
-        q += q_dot*dt;
-        r += r_dot*dt;
-    }
-    else
-    {
-        // if elevation is < 0, then force the velocities to equal 0
-        u = 0.0;
-        v = 0.0;
-        w = 0.0;
-        p = 0.0;
-        q = 0.0;
-        r = 0.0;
-    }
-
-    // Second, Earth relative rotational velocities and translational velocities
-    phi_dot = p + ( q*std::sin(phi) + r*std::cos(phi) )*std::tan(theta);
-    theta_dot = q*std::cos(phi) - r*std::sin(phi);
-    psi_dot = (q*std::sin(phi) + r*std::cos(phi))*(1/std::cos(theta));
-    X_dot = std::cos(theta)*std::cos(psi)*u +
-            (-std::cos(phi)*std::sin(psi) + std::sin(phi)*std::sin(theta)*std::cos(psi))*v +
-            (std::sin(phi)*std::sin(psi) + std::cos(phi)*std::sin(theta)*std::cos(psi))*w;
-    Y_dot = std::cos(theta)*std::sin(psi)*u + 
-            (std::cos(phi)*std::cos(psi) + std::sin(phi)*std::sin(theta)*std::sin(psi))*v +
-            (-std::sin(phi)*std::cos(psi) + std::cos(phi)*std::sin(theta)*std::sin(psi))*w;
-    Z_dot = -1.0*(-std::sin(theta)*u + std::sin(phi)*std::cos(theta)*v + std::cos(phi)*std::cos(theta)*w);
-}
-
-void Simulator::calcPositions(void)
-{
-    // Using direct integration right now
-    phi += phi_dot*dt;
-    theta += theta_dot*dt;
-    psi += psi_dot*dt;
-    northings += X_dot*dt;
-    eastings += Y_dot*dt;
-    elevation += Z_dot*dt;
-    
-    // Correct for ground
-    if(elevation < 0.0)
-    {
-        elevation = 0.0;
-        // If the quad is on the ground, force its velocity to be greater than or equal to zero
-        if(Z_dot < 0.0)
-        {
-            w_dot = 0.0;
-            w = 0.0;
-            Z_dot = 0.0;
-        }
-    }
-}
-
 void Simulator::setMotorCmd(const picopter::Motors_msg::ConstPtr& msg)
 {
     M1_cmd = msg->M1;
@@ -537,5 +463,15 @@ void Simulator::propTorque(void)
     //M2_T = (M2_RPM * M2_RPM * Tm);          // CCW Prop, (+1) Torque
     //M3_T = -1.0 * (M3_RPM * M3_RPM * Tm);   // CW Prop,  (-1) Torque
     //M4_T = (M4_RPM * M4_RPM * Tm);          // CCW Prop, (+1) Torque
+}
+
+float Simulator::limitZero(float input)
+{
+    if(input < 0)
+    {
+        input = 0.0;
+    }
+
+    return input;
 }
 

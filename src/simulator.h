@@ -46,12 +46,6 @@ class Simulator
 
         void calcDerivatives( VectorXf &input_array );
 
-        void calcAccels(void);
-
-        void calcVelocities(void);
-
-        void calcPositions(void);
-
         void setMotorCmd(const picopter::Motors_msg::ConstPtr& msg);
 
         // void computeRPM(void);
@@ -59,6 +53,8 @@ class Simulator
         void propThrust(void);
 
         void propTorque(void);
+
+        float limitZero(float input);
 
         // Motor Commands, %
         float M1_cmd;
@@ -126,6 +122,7 @@ class Simulator
         float lat;              // Latitude, degree decimal
         float lon;              // Longitude, degree decimal
         float pi;               // 3.14
+        float D2R;              // degrees to rads
         // Runge-Kutta Solver Variables and Arrays
         double sim_freq;         // Frequency of solver
         float dt;                // Time step of solver
